@@ -53,9 +53,6 @@ class Player:
         if self.jumping:
             self.jumping -= 1
 
-    def draw (self, screen):
-        screen.fill((255, 0, 0), self.rect.pgrect)
-
 
 class Level:
     def __init__ (self, game, event_handler, ID = 0):
@@ -64,12 +61,17 @@ class Level:
         self.ID = ID
         self.frame = conf.FRAME
         # input
+        event_handler.add_event_handlers({
+            pg.MOUSEBUTTONDOWN: self.mouse_down,
+            pg.MOUSEMOTION: self.mouse_move
+        })
         event_handler.add_key_handlers([
             (ks, [(self.move, (i,))], eh.MODE_HELD)
             for i, ks in enumerate(conf.KEYS_MOVE)
         ] + [
             (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1),
         ])
+        self.rect = pg.Rect(0, 0, *conf.RES).inflate(2, 2)
         self.init()
 
     def init (self):
@@ -78,7 +80,7 @@ class Level:
         self.player = Player(data['player_pos'])
         # window
         self.win = pg.Rect(data['window'])
-        # rects
+        # objs
         w, h = conf.RES
         bdy = [HalfLine(*args) for args in ((2, 0, 0, h), (3, 0, 0, w),
                                             (0, w, 0, h), (1, h, 0, w))]
@@ -87,6 +89,7 @@ class Level:
         # colhandler
         self.col_handler = CollisionHandler([self.player.obj] + self.objs,
             before_cb = self.filter_col, touching_cb = self.player.touching_cb)
+        self.dragged = False
 
     def move (self, key, mode, mods, i):
         self.player.move(i)
@@ -94,16 +97,34 @@ class Level:
     def jump (self, key, mode, mods):
         self.player.jump(mode == 0)
 
+    def mouse_down (self, evt):
+        self.dragged = True
+
+    def mouse_move (self, evt):
+        if self.dragged and any(evt.buttons):
+            self.win = self.win.move(evt.rel)
+
     def filter_col (self, o1, o2, dirn, i1, i2, data):
-        s1 = o1.shape
-        s2 = o2.shape
-        if not self.win.clip(self.to_screen(s1.pgrect)) \
-           or not self.win.clip(self.to_screen(s2.pgrect)):
-               return True
+        c = self.win.clip
+        for s in (o1.shape, o2.shape):
+            if isinstance(s, Rect):
+                r = s.pgrect
+            else: # HalfLine
+                size = [0, 0]
+                size[s.axis] = s.length
+                r = list(s.a) + size
+            w, h = c(self.to_screen(r)).size
+            if w == 0 and h == 0:
+                return True
 
     def update (self):
         self.player.update()
         self.col_handler.update()
+        if not self.rect.contains(self.to_screen(self.player.rect.pgrect)):
+            self.die()
+
+    def die (self):
+        self.init()
 
     def to_screen (self, rect):
         return [int(round(x)) for x in rect]
@@ -111,10 +132,16 @@ class Level:
     def draw (self, screen):
         screen.fill((0, 0, 0))
         screen.fill((255, 255, 255), self.win)
+        rects = []
         for r in self.rects:
             col = self.to_screen(r.pgrect)
             col = self.win.clip(col)
             if col:
                 screen.fill((50, 50, 50), col)
-        self.player.draw(screen)
+                rects.append(col)
+        p = self.to_screen(self.player.rect.pgrect)
+        screen.fill((255, 0, 0), p)
+        for r in rects:
+            if r.colliderect(p):
+                self.die()
         return True

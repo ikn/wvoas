@@ -31,10 +31,10 @@ KEYS_BACK = (pg.K_ESCAPE, pg.K_BACKSPACE)
 KEYS_MINIMISE = (pg.K_F10,)
 KEYS_FULLSCREEN = (pg.K_F11, (pg.K_RETURN, pg.KMOD_ALT, True),
                    (pg.K_KP_ENTER, pg.KMOD_ALT, True))
-KEYS_LEFT = (pg.K_LEFT,)
-KEYS_RIGHT = (pg.K_RIGHT,)
+KEYS_LEFT = (pg.K_LEFT, pg.K_a)
+KEYS_RIGHT = (pg.K_RIGHT, pg.K_d, pg.K_e)
 KEYS_MOVE = (KEYS_LEFT, KEYS_RIGHT)
-KEYS_JUMP = (pg.K_UP, pg.K_SPACE)
+KEYS_JUMP = (pg.K_UP, pg.K_SPACE, pg.K_w, pg.K_COMMA)
 
 # audio
 MUSIC_VOLUME = 50
