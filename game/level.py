@@ -63,7 +63,8 @@ class Level:
         # input
         event_handler.add_event_handlers({
             pg.MOUSEBUTTONDOWN: self.mouse_down,
-            pg.MOUSEMOTION: self.mouse_move
+            pg.MOUSEBUTTONUP: self.mouse_up,
+            #pg.MOUSEMOTION: self.mouse_move
         })
         event_handler.add_key_handlers([
             (ks, [(self.move, (i,))], eh.MODE_HELD)
@@ -89,7 +90,7 @@ class Level:
         # colhandler
         self.col_handler = CollisionHandler([self.player.obj] + self.objs,
             before_cb = self.filter_col, touching_cb = self.player.touching_cb)
-        self.dragged = False
+        self.dragging = set()
 
     def move (self, key, mode, mods, i):
         self.player.move(i)
@@ -98,11 +99,12 @@ class Level:
         self.player.jump(mode == 0)
 
     def mouse_down (self, evt):
-        self.dragged = True
+        self.dragging.add(evt.button)
+        pg.mouse.set_pos(self.rect.center)
 
-    def mouse_move (self, evt):
-        if self.dragged and any(evt.buttons):
-            self.win = self.win.move(evt.rel)
+    def mouse_up (self, evt):
+        if evt.button in self.dragging:
+            self.dragging.remove(evt.button)
 
     def filter_col (self, o1, o2, dirn, i1, i2, data):
         c = self.win.clip
@@ -118,6 +120,11 @@ class Level:
                 return True
 
     def update (self):
+        x0, y0 = self.rect.center
+        x, y = pg.mouse.get_pos()
+        if self.dragging:
+            self.win = self.win.move(x - x0, y - y0)
+        pg.mouse.set_pos(x0, y0)
         self.player.update()
         self.col_handler.update()
         if not self.rect.contains(self.to_screen(self.player.rect.pgrect)):
