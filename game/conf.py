@@ -60,6 +60,6 @@ AIR_RES = .0025
 # levels
 LEVELS = [{
     'player_pos': (300, 420),
-    'screen': (200, 300, 400, 450),
+    'window': (200, 320, 250, 150), # Pygame-style
     'rects': [(0, 450, 960, 550)]
 }]

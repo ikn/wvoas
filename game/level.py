@@ -76,6 +76,8 @@ class Level:
         data = conf.LEVELS[self.ID]
         # player
         self.player = Player(data['player_pos'])
+        # window
+        self.win = pg.Rect(data['window'])
         # rects
         w, h = conf.RES
         bdy = [HalfLine(*args) for args in ((2, 0, 0, h), (3, 0, 0, w),
@@ -93,15 +95,26 @@ class Level:
         self.player.jump(mode == 0)
 
     def filter_col (self, o1, o2, dirn, i1, i2, data):
-        pass
+        s1 = o1.shape
+        s2 = o2.shape
+        if not self.win.clip(self.to_screen(s1.pgrect)) \
+           or not self.win.clip(self.to_screen(s2.pgrect)):
+               return True
 
     def update (self):
         self.player.update()
         self.col_handler.update()
 
+    def to_screen (self, rect):
+        return [int(round(x)) for x in rect]
+
     def draw (self, screen):
-        screen.fill((255, 255, 255))
+        screen.fill((0, 0, 0))
+        screen.fill((255, 255, 255), self.win)
         for r in self.rects:
-            screen.fill((50, 50, 50), r.pgrect)
+            col = self.to_screen(r.pgrect)
+            col = self.win.clip(col)
+            if col:
+                screen.fill((50, 50, 50), col)
         self.player.draw(screen)
         return True

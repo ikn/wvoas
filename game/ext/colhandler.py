@@ -638,6 +638,7 @@ Afterwards, velocities and positions of objects may have changed.
                             if not collisions:
                                 # no collisions left
                                 t = 1
+                                break
                         else:
                             # we have a collision to handle
                             e, f = data
