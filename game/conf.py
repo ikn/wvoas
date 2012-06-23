@@ -44,42 +44,51 @@ SOUNDS = {}
 SOUND_VOLUMES = {}
 
 # gameplay
-PLAYER_MASS = 50
 PLAYER_SIZE = (15, 30)
-PLAYER_ELAST = 0
 PLAYER_SPEED = 1
 PLAYER_AIR_SPEED = .2
 INITIAL_JUMP = 5
 CONTINUE_JUMP = .7
 JUMP_TIME = 10
-OBJ_ELAST = 0
+ON_GROUND_TIME = 2
 GRAV = .5
 FRICT = .15
 AIR_RES = .0025
 GOAL_SIZE = (10, 60)
 HALF_WINDOW_SIZE = (125, 75)
 
+ascend_rects = []
+ascend_arects = []
+for i, (x1, x2) in enumerate(((20, 30), (40, 50))):
+    y0 = 450 - i * 60
+    ascend_rects.append((0, y0, x1, 10))
+    ascend_arects.append((x1, y0, x2 - x1, 10))
+    ascend_rects.append((x2, y0, 960 - x2, 10))
+
 # levels
 LEVELS = [{
     'player_pos': (100, 420),
     'goal': (900, 390),
-    'rects': [(0, 450, 350, 550), (150, 385, 350, 450), (250, 320, 350, 385),
-              (450, 320, 550, 540), (800, 450, 960, 540)]
+    'rects': [(0, 450, 960, 90), (200, 0, 50, 450), (400, 0, 300, 450)]
 }, {
     'player_pos': (100, 420),
     'goal': (900, 390),
-    'rects': [(0, 450, 960, 540), (200, 250, 230, 450), (470, 250, 680, 450)]
+    'rects': [(0, 450, 960, 90)],
+    'arects': [(200, 0, 50, 450), (400, 0, 300, 450)]
 }, {
-    'player_pos': (150, 120),
+    'player_pos': (200, 120),
     'goal': (850, 440),
-    'rects': [(0, 150, 500, 160), (500, 0, 960, 440), (500, 500, 960, 540)]
+    'rects': [(0, 150, 400, 10), (560, 500, 400, 10)]
+}, {
+    'player_pos': (200, 120),
+    'goal': (850, 440),
+    'rects': [(0, 150, 400, 10), (560, 500, 400, 10)],
+    'arects': [(400, 0, 10, 160)]
 }, {
     'player_pos': (150, 420),
     'goal': (800, 190),
-    'rects': [(0, 450, 600, 500), (0, 400, 600, 410), (0, 350, 600, 360),
-              (0, 310, 600, 320), (0, 250, 600, 290), (760, 450, 960, 500),
-              (760, 400, 960, 410), (760, 350, 960, 360), (760, 310, 960, 320),
-              (760, 250, 960, 290)]
+    'rects': ascend_rects,
+    'arects': ascend_arects
 }, {
     'player_pos': (100, 420),
     'goal': (25, 225),
