@@ -75,7 +75,7 @@ class Level:
             ((pg.K_ESCAPE,), lambda *args: setattr(self, 'show', not self.show), eh.MODE_ONDOWN)
         ])
         self.show = False
-        self.rect = pg.Rect(0, 0, *conf.RES).inflate(2, 2)
+        self.rect = pg.Rect(0, 0, *conf.RES).inflate(-10, -10)
         self.init()
 
     def init (self):
@@ -92,8 +92,6 @@ class Level:
         self.window = pg.Rect(x - w, y - h, 2 * w, 2 * h)
         # objs
         w, h = conf.RES
-        #bdy = [HalfLine(*args) for args in ((2, 0, 0, h), (3, 0, 0, w),
-                                            #(0, w, 0, h), (1, h, 0, w))]
         self.rects = [Rect(*args) for args in data['rects']]
         self.objs = [StaticObject(s, conf.OBJ_ELAST) for s in self.rects + [self.goal]]
         # colhandler
@@ -137,7 +135,7 @@ class Level:
         bl = self.rect.left
         br, bb = self.rect.bottomright
         l, t, r, b = self.to_screen(self.player.rect.rect)
-        if l < bl or r > br or b > bb:
+        if r < bl or l > br or t > bb:
             self.die()
 
     def win (self):
