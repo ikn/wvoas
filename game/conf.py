@@ -41,7 +41,7 @@ KEYS_RESET = (pg.K_r, pg.K_p)
 MUSIC_VOLUME = 50
 SOUND_VOLUME = 50
 EVENT_ENDMUSIC = pg.USEREVENT
-SOUNDS = {'hit': 10, 'die': 2}
+SOUNDS = {'hit': 10, 'die': 4}
 SOUND_VOLUMES = {'hit': 1. / 13, 'die': 2, 'move': .5}
 HIT_VOL_THRESHOLD = 2 # before scaling
 

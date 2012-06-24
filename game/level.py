@@ -256,12 +256,11 @@ class Level:
             if len(axes) == 2:
                 dirn = .5
             else:
-                dirn = .9 if axes.pop() == 0 else .1
+                dirn = .95 if axes.pop() == 0 else .1
             self.die(dirn)
 
     def update (self):
-        dying = self.dying
-        if not dying:
+        if not self.dying:
             # move player
             self.player.update()
         # move window
@@ -280,9 +279,9 @@ class Level:
                 rel[axis] += dirn
                 self.window = self.window.move(rel)
                 self.update_rects()
-                if not dying:
+                if not self.dying:
                     self.handle_collisions()
-        if dying:
+        if self.dying:
             # update particles
             k = conf.PARTICLE_DAMPING
             j = conf.PARTICLE_JITTER
