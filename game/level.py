@@ -133,15 +133,19 @@ class Level:
             for i, ks in enumerate(conf.KEYS_MOVE)
         ] + [
             (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1),
-            (conf.KEYS_RESET, lambda *args: self.init(), eh.MODE_ONDOWN)
+            (conf.KEYS_RESET, lambda *args: self.init(), eh.MODE_ONDOWN),
+            (conf.KEYS_PAUSE, self.toggle_paused, eh.MODE_ONDOWN)
         ])
-        self.show = False
+        self.paused = False
+        self.was_paused = False
+        self.unpaused = False
         self.centre = (conf.RES[0] / 2, conf.RES[1] / 2)
         self.ID = None
         self.init(ID, cp)
         self.load_graphics()
 
     def init (self, ID = None, cp = None):
+        self.first = True
         if ID is None:
             ID = self.ID
         if ID != self.ID:
@@ -163,6 +167,7 @@ class Level:
             p = data['player_pos']
         self.player = Player(self.game, p)
         self.dying = False
+        self.winning = False
         # goal
         self.goal = data['goal'] + conf.GOAL_SIZE
         # window
@@ -177,16 +182,28 @@ class Level:
         # centre mouse to avoid initial window movement
         pg.mouse.set_pos(self.centre)
 
+    def toggle_paused (self, *args):
+        if self.paused:
+            self.paused = False
+            self.was_paused = False
+            self.unpaused = True
+        elif not self.dying:
+            self.paused = True
+            self.player.moving = False
+            move_channel.pause()
+
     def skip (self, evt):
         if self.dying and self.dying_counter < conf.DIE_SKIP_THRESHOLD:
             self.dying = False
             self.init()
 
     def move (self, key, mode, mods, i):
-        self.player.move(i)
+        if not self.paused:
+            self.player.move(i)
 
     def jump (self, key, mode, mods):
-        self.player.jump(mode == 0)
+        if not self.paused:
+            self.player.jump(mode == 0)
 
     def get_clip (self, r1, r2, err = 0):
         x01, y01, w, h = r1
@@ -239,8 +256,6 @@ class Level:
             self.player.snd(0, 0)
             v[0] = 0
         # die if still colliding
-        #if any(get_clip(r, p, conf.ERR) for r in self.rects + self.arects):
-            #self.die()
         axes = set()
         e = conf.ERR
         colliding = [r for r in self.rects + self.arects if get_clip(r, p, e)]
@@ -260,14 +275,24 @@ class Level:
             self.die(dirn)
 
     def update (self):
+        if self.paused and not self.first:
+            return
+        if self.winning:
+            self.win_counter -= 1
+            if self.win_counter == 0:
+                self.init(self.ID + 1)
         if not self.dying:
             # move player
             self.player.update()
         # move window
         x0, y0 = self.centre
-        x, y = pg.mouse.get_pos()
+        if self.unpaused:
+            dx = dy = 0
+            self.unpaused = False
+        else:
+            x, y = pg.mouse.get_pos()
+            dx, dy = x - x0, y - y0
         pg.mouse.set_pos(x0, y0)
-        dx, dy = x - x0, y - y0
         done = False
         self.vert_dirn = 3
         for axis, d in ((0, dx), (1, dy)):
@@ -285,7 +310,7 @@ class Level:
             # update particles
             k = conf.PARTICLE_DAMPING
             j = conf.PARTICLE_JITTER
-            for c, p, v, size in self.particles:
+            for c, p, v, size in self.death_particles:
                 p[0] += v[0]
                 p[1] += v[1]
                 v[0] *= k
@@ -317,30 +342,40 @@ class Level:
                 self.current_cp += 1
 
     def win (self):
+        if self.winning:
+            return
         move_channel.pause()
         if self.ID == len(conf.LEVELS) - 1:
             self.game.quit()
         else:
-            self.init(self.ID + 1)
+            self.winning = True
+            self.win_counter = conf.WIN_TIME
+            self.win_sfc = pg.Surface(conf.RES).convert_alpha()
+            # particles
+            self.win_ptcls = []
+            self.add_ptcls(conf.WIN_PARTICLE_COLOURS, self.win_ptcls, list(pg.Rect(self.to_screen(self.player.rect)).center))
 
-    def die (self, dirn = .5):
-        self.dying = True
-        self.dying_counter = conf.DIE_TIME
-        # add particles
-        self.particles = ptcls = []
-        pos = list(pg.Rect(self.to_screen(self.player.rect)).center)
+    def add_ptcls (self, src, dest, pos, dirn = .5):
         max_speed = conf.PARTICLE_SPEED
         max_size = int(round(conf.PARTICLE_SIZE))
         r = random
         dirn *= pi / 2
-        for c, amount in conf.PARTICLE_COLOURS:
+        for c, amount in src:
             while amount > 0:
                 size = randint(1, max_size)
                 amount -= size
                 angle = random() * 2 * pi
                 speed = max_speed * expovariate(5)
                 v = [speed * cos(dirn) * cos(angle), speed * sin(dirn) * sin(angle)]
-                ptcls.append((c, list(pos), v, size))
+                dest.append((c, list(pos), v, size))
+
+    def die (self, dirn = .5):
+        self.dying = True
+        self.dying_counter = conf.DIE_TIME
+        # particles
+        self.death_particles = []
+        pos = list(pg.Rect(self.to_screen(self.player.rect)).center)
+        self.add_ptcls(conf.DEATH_PARTICLE_COLOURS, self.death_particles, pos, dirn)
         # sound
         move_channel.pause()
         self.game.play_snd('die')
@@ -359,6 +394,12 @@ class Level:
         return [int(round(x)) for x in rect]
 
     def draw (self, screen):
+        if self.paused:
+            if self.was_paused and not self.first:
+                return
+            else:
+                self.was_paused = True
+        self.first = False
         imgs = self.imgs
         to_screen = self.to_screen
         # background
@@ -392,9 +433,15 @@ class Level:
         # player
         if self.dying:
             # particles
-            for c, p, v, size in self.particles:
+            for c, p, v, size in self.death_particles:
                 screen.fill(c, p + [size, size])
         else:
             p = to_screen(self.player.rect)
             screen.blit(imgs['player'][0], pg.Rect(p).move(conf.PLAYER_OFFSET))
+        # fadeout
+        if self.winning:
+            alpha = 300 * float(conf.WIN_TIME - self.win_counter) / conf.WIN_TIME
+            alpha = min(255, int(round(alpha)))
+            self.win_sfc.fill((0, 0, 0, alpha))
+            screen.blit(self.win_sfc, (0, 0))
         return True

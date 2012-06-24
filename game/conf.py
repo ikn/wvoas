@@ -36,9 +36,10 @@ KEYS_RIGHT = (pg.K_RIGHT, pg.K_d, pg.K_e)
 KEYS_MOVE = (KEYS_LEFT, KEYS_RIGHT)
 KEYS_JUMP = (pg.K_UP, pg.K_SPACE, pg.K_w, pg.K_COMMA)
 KEYS_RESET = (pg.K_r, pg.K_p)
+KEYS_PAUSE = (pg.K_ESCAPE,)
 
 # audio
-MUSIC_VOLUME = 50
+MUSIC_VOLUME = 70
 SOUND_VOLUME = 50
 EVENT_ENDMUSIC = pg.USEREVENT
 SOUNDS = {'hit': 10, 'die': 4}
@@ -48,8 +49,10 @@ HIT_VOL_THRESHOLD = 2 # before scaling
 # graphics
 PLAYER_OFFSET = (-2, -2)
 GOAL_OFFSET = (-17, -2)
-PARTICLE_COLOURS = (((36, 130, 36), 1500), ((25, 91, 25), 1000),
-                    ((47, 169, 47), 500))
+DEATH_PARTICLE_COLOURS = (((36, 130, 36), 1500), ((25, 91, 25), 1000),
+                          ((47, 169, 47), 500))
+WIN_PARTICLE_COLOURS = (((36, 130, 36), 500), ((25, 91, 25), 500),
+                        ((47, 169, 47), 500))
 PARTICLE_SPEED = 10
 PARTICLE_LIFE = 120
 PARTICLE_SIZE = 5
@@ -66,6 +69,8 @@ JUMP_TIME = 10
 ON_GROUND_TIME = 2
 DIE_TIME = 120
 DIE_SKIP_THRESHOLD = 100 # can skip when counted down this low from DIE_TIME
+WIN_TIME = 120
+WIN_SKIP_THRESHOLD = 100
 GRAV = .5
 FRICT = .15
 AIR_RES = .0025
@@ -95,14 +100,6 @@ LEVELS = [{
     'rects': [(0, 150, 400, 10), (560, 500, 400, 10)],
     'arects': [(400, 0, 10, 160)]
 }, {
-    'player_pos': (150, 420),
-    'goal': (900, 100),
-    'checkpoints': [(520, 330), (270, 160)],
-    'rects': [(0, 450, 960, 10), (0, 400, 960, 10), (500, 350, 460, 10),
-              (300, 290, 200, 10), (150, 210, 150, 40), (150, 180, 100, 40),
-              (550, 160, 960, 10), (450, 0, 10, 120)],
-    'arects': [(500, 290, 460, 10), (250, 180, 50, 10)]
-}, {
     'player_pos': (100, 320),
     'goal': (860, 290),
     'rects': [(0, 350, 960, 45)],
@@ -113,4 +110,12 @@ LEVELS = [{
     'checkpoints': [(785, 210)],
     'rects': [(100, 0, 570, 150), (0, 250, 250, 10), (570, 150, 100, 130),
               (330, 520, 150, 20), (570, 400, 100, 140), (740, 230, 100, 220)]
+}, {
+    'player_pos': (150, 420),
+    'goal': (900, 100),
+    'checkpoints': [(520, 330), (270, 160)],
+    'rects': [(0, 450, 960, 10), (0, 400, 960, 10), (500, 350, 460, 10),
+              (300, 290, 200, 10), (150, 210, 150, 40), (150, 180, 100, 40),
+              (550, 160, 960, 10), (450, 0, 10, 120)],
+    'arects': [(500, 290, 460, 10), (250, 180, 50, 10)]
 }]
