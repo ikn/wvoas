@@ -1,5 +1,5 @@
 from math import cos, sin, pi
-from random import randint, random, expovariate
+from random import randint, random, expovariate, shuffle
 
 import pygame as pg
 from ext import evthandler as eh
@@ -306,17 +306,23 @@ class Level:
                 self.update_rects()
                 if not self.dying:
                     self.handle_collisions()
+        for i, cdn in enumerate((self.dying, self.winning)):
+            if cdn:
+                if i == 1:
+                    ptcls = self.win_ptcls
+                else:
+                    ptcls = self.death_particles
+                # update particles
+                k = conf.PARTICLE_DAMPING
+                j = conf.PARTICLE_JITTER
+                for c, p, v, size in ptcls:
+                    p[0] += v[0]
+                    p[1] += v[1]
+                    v[0] *= k
+                    v[1] *= k
+                    v[0] += j * (random() - .5)
+                    v[1] += j * (random() - .5)
         if self.dying:
-            # update particles
-            k = conf.PARTICLE_DAMPING
-            j = conf.PARTICLE_JITTER
-            for c, p, v, size in self.death_particles:
-                p[0] += v[0]
-                p[1] += v[1]
-                v[0] *= k
-                v[1] *= k
-                v[0] += j * (random() - .5)
-                v[1] += j * (random() - .5)
             # counter
             self.dying_counter -= 1
             if self.dying_counter == 0:
@@ -353,7 +359,13 @@ class Level:
             self.win_sfc = pg.Surface(conf.RES).convert_alpha()
             # particles
             self.win_ptcls = []
-            self.add_ptcls(conf.WIN_PARTICLE_COLOURS, self.win_ptcls, list(pg.Rect(self.to_screen(self.player.rect)).center))
+            #for i in xrange(4):
+                #pos = list(pg.Rect(self.to_screen(self.goal)).center)
+                #pos[0] += (1 if random() > .5 else -1) * 200 * (random() + .3)
+                #pos[1] += (1 if random() > .5 else -1) * 200 * (random() + .3)
+                #l = list(conf.WIN_PARTICLE_COLOURS)
+                #shuffle(l)
+                #self.add_ptcls(l, self.win_ptcls, pos)
 
     def add_ptcls (self, src, dest, pos, dirn = .5):
         max_speed = conf.PARTICLE_SPEED
@@ -430,14 +442,17 @@ class Level:
             img = imgs['checkpoint' + ('-current' if i == self.current_cp else '')]
             if c:
                 screen.blit(img, c, c.move(-r[0], -r[1]))
-        # player
+        # particles
         if self.dying:
-            # particles
             for c, p, v, size in self.death_particles:
                 screen.fill(c, p + [size, size])
-        else:
+        # player
+        if not self.dying:
             p = to_screen(self.player.rect)
             screen.blit(imgs['player'][0], pg.Rect(p).move(conf.PLAYER_OFFSET))
+        if self.winning:
+            for c, p, v, size in self.win_ptcls:
+                screen.fill(c, p + [size, size])
         # fadeout
         if self.winning:
             alpha = 300 * float(conf.WIN_TIME - self.win_counter) / conf.WIN_TIME
