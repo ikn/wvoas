@@ -35,16 +35,19 @@ KEYS_LEFT = (pg.K_LEFT, pg.K_a)
 KEYS_RIGHT = (pg.K_RIGHT, pg.K_d, pg.K_e)
 KEYS_MOVE = (KEYS_LEFT, KEYS_RIGHT)
 KEYS_JUMP = (pg.K_UP, pg.K_SPACE, pg.K_w, pg.K_COMMA)
+KEYS_RESET = (pg.K_r, pg.K_p)
 
 # audio
 MUSIC_VOLUME = 50
 SOUND_VOLUME = 50
 EVENT_ENDMUSIC = pg.USEREVENT
-SOUNDS = {}
-SOUND_VOLUMES = {}
+SOUNDS = {'hit': 10, 'die': 2}
+SOUND_VOLUMES = {'hit': 1. / 13, 'die': 2, 'move': .5}
+HIT_VOL_THRESHOLD = 2 # before scaling
 
 # graphics
 PLAYER_OFFSET = (-2, -2)
+GOAL_OFFSET = (-17, -2)
 PARTICLE_COLOURS = (((36, 130, 36), 1500), ((25, 91, 25), 1000),
                     ((47, 169, 47), 500))
 PARTICLE_SPEED = 10
@@ -66,7 +69,7 @@ DIE_SKIP_THRESHOLD = 100 # can skip when counted down this low from DIE_TIME
 GRAV = .5
 FRICT = .15
 AIR_RES = .0025
-GOAL_SIZE = (10, 60)
+GOAL_SIZE = (5, 60)
 CHECKPOINT_SIZE = (10, 10)
 HALF_WINDOW_SIZE = (125, 75)
 WINDOW_SIZE = [x * 2 for x in HALF_WINDOW_SIZE]

@@ -6,6 +6,15 @@ from ext import evthandler as eh
 
 import conf
 
+# load move sound
+snd = pg.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
+move_channel = c = pg.mixer.find_channel()
+assert c is not None
+c.set_volume(0)
+c.play(snd, -1)
+c.pause()
+c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
+
 def tile (screen, img, rect, jitter = None):
     if jitter is None:
         ox = oy = 0
@@ -40,27 +49,48 @@ def tile (screen, img, rect, jitter = None):
 
 
 class Player:
-    def __init__ (self, pos):
+    def __init__ (self, game, pos):
+        self.game = game
         self.rect = list(pos) + list(conf.PLAYER_SIZE)
         self.vel = [0, 0]
         self.on_ground = 0
         self.jumping = 0
         self.jumped = False
+        self.moving = False
+        self.moved = False
+        move_channel.pause()
 
     def move (self, dirn):
+        if not self.moving:
+            move_channel.unpause()
+            self.moving = True
+        self.moved = True
         speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
         self.vel[0] += (1 if dirn else -1) * speed
 
     def jump (self, press):
         if press:
             if self.on_ground and not self.jumping:
-                self.vel[1] -= conf.INITIAL_JUMP
+                dv = conf.INITIAL_JUMP
+                self.snd(dv = dv)
+                self.vel[1] -= dv
                 self.jumping = conf.JUMP_TIME
                 self.on_ground = 0
         elif self.jumping:
             self.jumped = True
 
+    def snd (self, axis = None, v = None, dv = None):
+        if dv is None:
+            dv = v - self.vel[axis]
+        vol = abs(dv)
+        if vol >= conf.HIT_VOL_THRESHOLD:
+            self.game.play_snd('hit', vol)
+
     def update (self):
+        if self.moving and not self.moved:
+            self.moving = False
+            move_channel.pause()
+        self.moved = False
         vx, vy = self.vel
         # gravity
         vy += conf.GRAV
@@ -102,7 +132,8 @@ class Level:
             (ks, [(self.move, (i,))], eh.MODE_HELD)
             for i, ks in enumerate(conf.KEYS_MOVE)
         ] + [
-            (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1)
+            (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1),
+            (conf.KEYS_RESET, lambda *args: self.init(), eh.MODE_ONDOWN)
         ])
         self.show = False
         self.centre = (conf.RES[0] / 2, conf.RES[1] / 2)
@@ -130,7 +161,7 @@ class Level:
                 p[i] += float(s_c[i] - s_p[i]) / 2
         else:
             p = data['player_pos']
-        self.player = Player(p)
+        self.player = Player(self.game, p)
         self.dying = False
         # goal
         self.goal = data['goal'] + conf.GOAL_SIZE
@@ -182,6 +213,7 @@ class Level:
     def handle_collisions (self):
         get_clip = self.get_clip
         p = self.player.rect
+        p0 = list(p)
         v = self.player.vel
         for r in self.rects + self.arects:
             if get_clip(r, p):
@@ -193,33 +225,38 @@ class Level:
                               (r_x1 - p_x0, 2), (r_y1 - p_y0, 3))
                 axis = dirn % 2
                 p[axis] += (1 if dirn >= 2 else -1) * x
+                self.player.snd(axis, 0)
                 v[axis] = 0
                 if axis == 1:
                     self.vert_dirn = dirn
         # screen left/right
         if p[0] < 0:
             p[0] = 0
+            self.player.snd(0, 0)
+            v[0] = 0
         elif p[0] + p[2] > conf.RES[0]:
             p[0] = conf.RES[0] - p[2]
+            self.player.snd(0, 0)
+            v[0] = 0
         # die if still colliding
         #if any(get_clip(r, p, conf.ERR) for r in self.rects + self.arects):
             #self.die()
-        colliding = set()
-        for r in self.rects + self.arects:
-            if get_clip(r, p, conf.ERR):
+        axes = set()
+        e = conf.ERR
+        colliding = [r for r in self.rects + self.arects if get_clip(r, p, e)]
+        if colliding:
+            for r in colliding:
                 r_x0, r_y0, w, h = r
                 r_x1, r_y1 = r_x0 + w, r_y0 + h
                 p_x0, p_y0, w, h = p
                 p_x1, p_y1 = p_x0 + w, p_y0 + h
                 x, dirn = min((p_x1 - r_x0, 0), (p_y1 - r_y0, 1),
                               (r_x1 - p_x0, 2), (r_y1 - p_y0, 3))
-                colliding.add(dirn % 2)
-        l = len(colliding)
-        if l > 0:
-            if l == 2:
+                axes.add(dirn % 2)
+            if len(axes) == 2:
                 dirn = .5
             else:
-                dirn = .9 if colliding.pop() == 0 else .1
+                dirn = .9 if axes.pop() == 0 else .1
             self.die(dirn)
 
     def update (self):
@@ -277,10 +314,11 @@ class Level:
             self.win()
         # check if at checkpoints
         for c in self.checkpoints[self.current_cp + 1:]:
-            if get_clip(p, c):
+            if get_clip(p, c) and get_clip(w, c):
                 self.current_cp += 1
 
     def win (self):
+        move_channel.pause()
         if self.ID == len(conf.LEVELS) - 1:
             self.game.quit()
         else:
@@ -304,11 +342,14 @@ class Level:
                 speed = max_speed * expovariate(5)
                 v = [speed * cos(dirn) * cos(angle), speed * sin(dirn) * sin(angle)]
                 ptcls.append((c, list(pos), v, size))
+        # sound
+        move_channel.pause()
+        self.game.play_snd('die')
 
     def load_graphics (self):
         self.imgs = imgs = {}
         for img in ('bg', 'void', 'window', 'rect', 'arect', 'player',
-                    'checkpoint-current', 'checkpoint'):
+                    'checkpoint-current', 'checkpoint', 'goal'):
             imgs[img] = self.game.img(img + '.png')
         img = imgs['player']
         imgs['player'] = [img, pg.transform.flip(img, True, False)]
@@ -341,7 +382,8 @@ class Level:
         for r in self.arects:
             tile(screen, img, to_screen(r))
         # goal
-        screen.fill((255, 255, 0), to_screen(self.goal))
+        r = pg.Rect(to_screen(self.goal)).move(conf.GOAL_OFFSET)
+        screen.blit(imgs['goal'], r)
         # checkpoints
         for i, r in enumerate(self.checkpoints):
             c = w.clip(to_screen(r))

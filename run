@@ -4,7 +4,6 @@ import sys
 import os
 from time import time
 from random import choice
-from math import sin, cos
 
 import pygame
 from pygame.time import wait
