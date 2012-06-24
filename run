@@ -4,6 +4,7 @@ import sys
 import os
 from time import time
 from random import choice
+from math import sin, cos
 
 import pygame
 from pygame.time import wait
@@ -383,6 +384,6 @@ if __name__ == '__main__':
     restarting = True
     while restarting:
         restarting = False
-        Game(Level, 6).run()
+        Game(Level, 1).run()
 
 pygame.quit()
