@@ -190,7 +190,7 @@ class Level:
                 p_x0, p_y0, w, h = p
                 p_x1, p_y1 = p_x0 + w, p_y0 + h
                 x, dirn = min((p_x1 - r_x0, 0), (p_y1 - r_y0, 1),
-                            (r_x1 - p_x0, 2), (r_y1 - p_y0, 3))
+                              (r_x1 - p_x0, 2), (r_y1 - p_y0, 3))
                 axis = dirn % 2
                 p[axis] += (1 if dirn >= 2 else -1) * x
                 v[axis] = 0
@@ -206,13 +206,13 @@ class Level:
             #self.die()
         colliding = set()
         for r in self.rects + self.arects:
-            if get_clip(r, p):
+            if get_clip(r, p, conf.ERR):
                 r_x0, r_y0, w, h = r
                 r_x1, r_y1 = r_x0 + w, r_y0 + h
                 p_x0, p_y0, w, h = p
                 p_x1, p_y1 = p_x0 + w, p_y0 + h
                 x, dirn = min((p_x1 - r_x0, 0), (p_y1 - r_y0, 1),
-                            (r_x1 - p_x0, 2), (r_y1 - p_y0, 3))
+                              (r_x1 - p_x0, 2), (r_y1 - p_y0, 3))
                 colliding.add(dirn % 2)
         l = len(colliding)
         if l > 0:
