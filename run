@@ -1,4 +1,4 @@
-#! /usr/bin/python2
+#! /usr/bin/python
 
 import sys
 import os
@@ -11,13 +11,13 @@ if os.name == 'nt':
     # for Windows freeze support
     import pygame._view
 os.chdir(os.path.dirname(sys.argv[0]))
-from game.ext import evthandler as eh
-from game.ext.fonthandler import Fonts
+from wvoas.ext import evthandler as eh
+from wvoas.ext.fonthandler import Fonts
 
 pygame.mixer.pre_init(buffer = 1024)
 pygame.init()
-from game.level import Level
-from game import conf
+from wvoas.level import Level
+from wvoas import conf
 
 ir = lambda x: int(round(x))
 

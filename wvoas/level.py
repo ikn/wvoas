@@ -134,7 +134,7 @@ class Level:
         ] + [
             (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1),
             (conf.KEYS_RESET, lambda *args: self.init(), eh.MODE_ONDOWN),
-            (conf.KEYS_PAUSE, self.toggle_paused, eh.MODE_ONDOWN)
+            (conf.KEYS_BACK, self.toggle_paused, eh.MODE_ONDOWN)
         ])
         self.paused = False
         self.was_paused = False

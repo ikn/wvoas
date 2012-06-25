@@ -1,0 +1,62 @@
+World View of a Slime is a 2D puzzle platformer where only a small part of the
+world exists at a time.
+
+This was made for a 48-hour competition in June 2012, with the theme 'tiny
+screen size'.
+
+    DEPENDENCIES
+
+Python (2.6 or later 2.x)
+Pygame (1.8 or later, probably; tested with 1.9.1)
+
+    RUNNING
+
+./configure
+./run
+
+Should work wherever Pygame does.
+
+    PLAYING
+
+The aim is to reach the flag in each level.  Falling off the bottom of the
+screen or squashing the slime results in dying.  Blue squares are checkpoints;
+the last one you touched turns green.
+
+    CONTROLS
+
+arrow keys, WASD: move, jump.
+space: jump.
+escape, backspace: pause/unpause.
+mouse movement: move the visible window.
+R: reset the level.
+
+WASD to move and R to reset are in the same position for the AZERTY (ZQSD R)
+and Dvorak (,AOE P) keyboard layouts too.
+
+To quit, close the window.
+
+    LICENSING
+
+Source code is available under the new BSD license (included).
+
+Images are available under the Creative Commons CC0 license:
+    https://creativecommons.org/publicdomain/zero/1.0/
+
+Audio files are available under Creative Commons licenses.  Sounds are from
+Freesound and are by:
+
+duckduckpony <http://www.freesound.org/people/duckduckpony/>
+SlykMrByches <http://www.freesound.org/people/SlykMrByches/>
+Rock Savage <http://www.freesound.org/people/Rock%20Savage/>
+Christian Berner <http://www.freesound.org/people/Donalfonso/>
+Michael Manzke <http://www.freesound.org/people/m_O_m/>
+klankbeeld <http://www.freesound.org/people/klankbeeld/>
+MWLANDI <http://www.freesound.org/people/MWLANDI/>
+Filipe Chagas <http://www.freesound.org/people/Filipe%20Chagas/>
+
+Music is:
+
+'William and Caroline (Nebulae)' by Gurdonark
+    <http://dig.ccmixter.org/dig?user=gurdonark>
+'Lost In Outer Space' by Beluga Ten <http://dig.ccmixter.org/dig?user=Beluga>
+'Reverie' and 'Empty Rooms' by _ghost <http://dig.ccmixter.org/dig?user=_ghost>

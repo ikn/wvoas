@@ -31,12 +31,11 @@ KEYS_BACK = (pg.K_ESCAPE, pg.K_BACKSPACE)
 KEYS_MINIMISE = (pg.K_F10,)
 KEYS_FULLSCREEN = (pg.K_F11, (pg.K_RETURN, pg.KMOD_ALT, True),
                    (pg.K_KP_ENTER, pg.KMOD_ALT, True))
-KEYS_LEFT = (pg.K_LEFT, pg.K_a)
+KEYS_LEFT = (pg.K_LEFT, pg.K_a, pg.K_q)
 KEYS_RIGHT = (pg.K_RIGHT, pg.K_d, pg.K_e)
 KEYS_MOVE = (KEYS_LEFT, KEYS_RIGHT)
-KEYS_JUMP = (pg.K_UP, pg.K_SPACE, pg.K_w, pg.K_COMMA)
+KEYS_JUMP = (pg.K_UP, pg.K_SPACE, pg.K_w, pg.K_z, pg.K_COMMA)
 KEYS_RESET = (pg.K_r, pg.K_p)
-KEYS_PAUSE = (pg.K_ESCAPE,)
 
 # audio
 MUSIC_VOLUME = 70
@@ -82,6 +81,10 @@ ERR = 10 ** -10
 
 # levels
 LEVELS = [{
+    'player_pos': (150, 170),
+    'goal': (800, 390),
+    'rects': [(0, 200, 960, 150), (0, 450, 960, 90)]
+}, {
     'player_pos': (100, 420),
     'goal': (900, 390),
     'rects': [(0, 450, 960, 90), (200, 0, 50, 450), (400, 0, 300, 450)]
