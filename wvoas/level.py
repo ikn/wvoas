@@ -49,8 +49,8 @@ def tile (screen, img, rect, jitter = None):
 
 
 class Player:
-    def __init__ (self, game, pos):
-        self.game = game
+    def __init__ (self, level, pos):
+        self.level = level
         self.rect = list(pos) + list(conf.PLAYER_SIZE)
         self.vel = [0, 0]
         self.on_ground = 0
@@ -67,6 +67,10 @@ class Player:
         self.moved = True
         speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
         self.vel[0] += (1 if dirn else -1) * speed
+        if self.on_ground:
+            if self.on_ground:
+                pos = pg.Rect(self.level.to_screen(self.rect)).midbottom
+                self.level.add_ptcls('move', pos)
 
     def jump (self, press):
         if press:
@@ -76,6 +80,8 @@ class Player:
                 self.vel[1] -= dv
                 self.jumping = conf.JUMP_TIME
                 self.on_ground = 0
+                pos = pg.Rect(self.level.to_screen(self.rect)).midbottom
+                self.level.add_ptcls('jump', pos)
         elif self.jumping:
             self.jumped = True
 
@@ -84,7 +90,7 @@ class Player:
             dv = v - self.vel[axis]
         vol = abs(dv)
         if vol >= conf.HIT_VOL_THRESHOLD:
-            self.game.play_snd('hit', vol)
+            self.level.game.play_snd('hit', vol)
 
     def update (self):
         if self.moving and not self.moved:
@@ -165,7 +171,7 @@ class Level:
                 p[i] += float(s_c[i] - s_p[i]) / 2
         else:
             p = data['player_pos']
-        self.player = Player(self.game, p)
+        self.player = Player(self, p)
         self.dying = False
         self.winning = False
         # goal
@@ -179,6 +185,7 @@ class Level:
         self.all_rects = data['rects']
         self.update_rects()
         self.arects = data.get('arects', [])
+        self.particles = []
         # centre mouse to avoid initial window movement
         pg.mouse.set_pos(self.centre)
 
@@ -281,12 +288,13 @@ class Level:
     def update (self):
         if self.paused and not self.first:
             return
+        # update winning counter
         if self.winning:
             self.win_counter -= 1
             if self.win_counter == 0:
                 self.init(self.ID + 1)
+        # move player
         if not self.dying:
-            # move player
             self.player.update()
         # move window
         x0, y0 = self.centre
@@ -310,19 +318,21 @@ class Level:
                 self.update_rects()
                 if not self.dying:
                     self.handle_collisions()
+        # update particles
+        ptcls = []
+        for c, p, v, size, k, j, t in self.particles:
+            p[0] += v[0]
+            p[1] += v[1]
+            v[0] *= k
+            v[1] *= k
+            v[0] += j * (random() - .5)
+            v[1] += j * (random() - .5)
+            t -= 1
+            if t != 0:
+                ptcls.append((c, p, v, size, k, j, t))
+        self.particles = ptcls
+        # update death counter
         if self.dying:
-            # update particles
-            k = conf.PARTICLE_DAMPING
-            j = conf.PARTICLE_JITTER
-            for c, p, v, size in self.particles:
-                p[0] += v[0]
-                p[1] += v[1]
-                v[0] *= k
-                v[1] *= k
-                v[0] += j * (random() - .5)
-                v[1] += j * (random() - .5)
-        if self.dying:
-            # counter
             self.dying_counter -= 1
             if self.dying_counter == 0:
                 self.init()
@@ -334,7 +344,7 @@ class Level:
         # die if OoB
         if self.player.rect[1] > conf.RES[1]:
             self.die()
-        # check if at goal
+        # win if at goal
         get_clip = self.get_clip
         w = self.window
         p = self.player.rect
@@ -357,27 +367,34 @@ class Level:
             self.win_counter = conf.WIN_TIME
             self.win_sfc = pg.Surface(conf.RES).convert_alpha()
 
-    def add_ptcls (self, colours, pos, dirn = .5):
-        max_speed = conf.PARTICLE_SPEED
-        max_size = int(round(conf.PARTICLE_SIZE))
-        r = random
+    def add_ptcls (self, key, pos, dirn = .5):
+        particles = self.particles
+        data = conf.PARTICLES[key]
+        max_speed = data['speed']
+        max_size = data['size']
+        k = data['damping']
+        j = data['jitter']
+        max_life = data['life']
         dirn *= pi / 2
-        for c, amount in colours:
+        for c, amount in data['colours']:
+            a, b = divmod(amount, 1)
+            amount = int(a) + (1 if random() < b else 0)
             while amount > 0:
                 size = randint(1, max_size)
                 amount -= size
                 angle = random() * 2 * pi
                 speed = max_speed * expovariate(5)
                 v = [speed * cos(dirn) * cos(angle), speed * sin(dirn) * sin(angle)]
-                self.particles.append((c, list(pos), v, size))
+                life = int(random() * max_life)
+                if life > 0:
+                    particles.append((c, list(pos), v, size, k, j, life))
 
     def die (self, dirn = .5):
         self.dying = True
         self.dying_counter = conf.DIE_TIME
         # particles
-        self.particles = []
         pos = list(pg.Rect(self.to_screen(self.player.rect)).center)
-        self.add_ptcls(conf.PARTICLE_COLOURS, pos, dirn)
+        self.add_ptcls('die', pos, dirn)
         # sound
         move_channel.pause()
         self.game.play_snd('die')
@@ -433,9 +450,8 @@ class Level:
             if c:
                 screen.blit(img, c, c.move(-r[0], -r[1]))
         # particles
-        if self.dying:
-            for c, p, v, size in self.particles:
-                screen.fill(c, p + [size, size])
+        for c, p, v, size, k, j, t in self.particles:
+            screen.fill(c, p + [size, size])
         # player
         if not self.dying:
             p = to_screen(self.player.rect)
