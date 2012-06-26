@@ -48,10 +48,8 @@ HIT_VOL_THRESHOLD = 2 # before scaling
 # graphics
 PLAYER_OFFSET = (-2, -2)
 GOAL_OFFSET = (-17, -2)
-DEATH_PARTICLE_COLOURS = (((36, 130, 36), 1500), ((25, 91, 25), 1000),
-                          ((47, 169, 47), 500))
-WIN_PARTICLE_COLOURS = (((200, 50, 50), 500), ((50, 200, 50), 500),
-                        ((50, 50, 200), 500))
+PARTICLE_COLOURS = (((36, 130, 36), 1500), ((25, 91, 25), 1000),
+                    ((47, 169, 47), 500))
 PARTICLE_SPEED = 10
 PARTICLE_LIFE = 120
 PARTICLE_SIZE = 5

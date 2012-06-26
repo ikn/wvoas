@@ -133,7 +133,7 @@ class Level:
             for i, ks in enumerate(conf.KEYS_MOVE)
         ] + [
             (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1),
-            (conf.KEYS_RESET, lambda *args: self.init(), eh.MODE_ONDOWN),
+            (conf.KEYS_RESET, self.reset, eh.MODE_ONDOWN),
             (conf.KEYS_BACK, self.toggle_paused, eh.MODE_ONDOWN)
         ])
         self.paused = False
@@ -181,6 +181,10 @@ class Level:
         self.arects = data.get('arects', [])
         # centre mouse to avoid initial window movement
         pg.mouse.set_pos(self.centre)
+
+    def reset (self, *args):
+        if not self.winning:
+            self.init()
 
     def toggle_paused (self, *args):
         if self.paused:
@@ -306,22 +310,17 @@ class Level:
                 self.update_rects()
                 if not self.dying:
                     self.handle_collisions()
-        for i, cdn in enumerate((self.dying, self.winning)):
-            if cdn:
-                if i == 1:
-                    ptcls = self.win_ptcls
-                else:
-                    ptcls = self.death_particles
-                # update particles
-                k = conf.PARTICLE_DAMPING
-                j = conf.PARTICLE_JITTER
-                for c, p, v, size in ptcls:
-                    p[0] += v[0]
-                    p[1] += v[1]
-                    v[0] *= k
-                    v[1] *= k
-                    v[0] += j * (random() - .5)
-                    v[1] += j * (random() - .5)
+        if self.dying:
+            # update particles
+            k = conf.PARTICLE_DAMPING
+            j = conf.PARTICLE_JITTER
+            for c, p, v, size in self.particles:
+                p[0] += v[0]
+                p[1] += v[1]
+                v[0] *= k
+                v[1] *= k
+                v[0] += j * (random() - .5)
+                v[1] += j * (random() - .5)
         if self.dying:
             # counter
             self.dying_counter -= 1
@@ -357,37 +356,28 @@ class Level:
             self.winning = True
             self.win_counter = conf.WIN_TIME
             self.win_sfc = pg.Surface(conf.RES).convert_alpha()
-            # particles
-            self.win_ptcls = []
-            #for i in xrange(4):
-                #pos = list(pg.Rect(self.to_screen(self.goal)).center)
-                #pos[0] += (1 if random() > .5 else -1) * 200 * (random() + .3)
-                #pos[1] += (1 if random() > .5 else -1) * 200 * (random() + .3)
-                #l = list(conf.WIN_PARTICLE_COLOURS)
-                #shuffle(l)
-                #self.add_ptcls(l, self.win_ptcls, pos)
 
-    def add_ptcls (self, src, dest, pos, dirn = .5):
+    def add_ptcls (self, colours, pos, dirn = .5):
         max_speed = conf.PARTICLE_SPEED
         max_size = int(round(conf.PARTICLE_SIZE))
         r = random
         dirn *= pi / 2
-        for c, amount in src:
+        for c, amount in colours:
             while amount > 0:
                 size = randint(1, max_size)
                 amount -= size
                 angle = random() * 2 * pi
                 speed = max_speed * expovariate(5)
                 v = [speed * cos(dirn) * cos(angle), speed * sin(dirn) * sin(angle)]
-                dest.append((c, list(pos), v, size))
+                self.particles.append((c, list(pos), v, size))
 
     def die (self, dirn = .5):
         self.dying = True
         self.dying_counter = conf.DIE_TIME
         # particles
-        self.death_particles = []
+        self.particles = []
         pos = list(pg.Rect(self.to_screen(self.player.rect)).center)
-        self.add_ptcls(conf.DEATH_PARTICLE_COLOURS, self.death_particles, pos, dirn)
+        self.add_ptcls(conf.PARTICLE_COLOURS, pos, dirn)
         # sound
         move_channel.pause()
         self.game.play_snd('die')
@@ -444,15 +434,12 @@ class Level:
                 screen.blit(img, c, c.move(-r[0], -r[1]))
         # particles
         if self.dying:
-            for c, p, v, size in self.death_particles:
+            for c, p, v, size in self.particles:
                 screen.fill(c, p + [size, size])
         # player
         if not self.dying:
             p = to_screen(self.player.rect)
             screen.blit(imgs['player'][0], pg.Rect(p).move(conf.PLAYER_OFFSET))
-        if self.winning:
-            for c, p, v, size in self.win_ptcls:
-                screen.fill(c, p + [size, size])
         # fadeout
         if self.winning:
             alpha = 300 * float(conf.WIN_TIME - self.win_counter) / conf.WIN_TIME
