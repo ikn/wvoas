@@ -46,8 +46,14 @@ SOUND_VOLUMES = {'hit': 1. / 13, 'die': 2, 'move': .5}
 HIT_VOL_THRESHOLD = 2 # before scaling
 
 # graphics
+FONT = 'Chicle-Regular.ttf'
+DEFAULT_BG = 'bg'
+BGS = ('bg', 'title')
+FADE_TIME = 120
+FADE_RATE = 300 # rate * time_ratio = 255 * alpha
 PLAYER_OFFSET = (-2, -2)
 GOAL_OFFSET = (-17, -2)
+VOID_JITTER = (5, 5, 5)
 PARTICLES = {
     'die': {
         'colours': (((36, 130, 36), 1500), ((25, 91, 25), 1000),
@@ -88,7 +94,6 @@ JUMP_TIME = 10
 ON_GROUND_TIME = 2
 DIE_TIME = 120
 DIE_SKIP_THRESHOLD = 100 # can skip when counted down this low from DIE_TIME
-WIN_TIME = 120
 WIN_SKIP_THRESHOLD = 100
 GRAV = .5
 FRICT = .15
@@ -100,6 +105,11 @@ WINDOW_SIZE = [x * 2 for x in HALF_WINDOW_SIZE]
 ERR = 10 ** -10
 
 # levels
+TITLE_LEVEL = {
+    'goal': (700, 390),
+    'rects': [(0, 450, 960, 90)],
+    'bg': 'title'
+}
 LEVELS = [{
     'player_pos': (472.5, 170),
     'goal': (477.5, 390),
@@ -135,7 +145,7 @@ LEVELS = [{
               (330, 520, 150, 20), (570, 400, 100, 140), (740, 230, 100, 220)]
 }, {
     'player_pos': (150, 420),
-    'goal': (900, 100),
+    'goal': (900, 120),
     'checkpoints': [(520, 330), (270, 160)],
     'rects': [(0, 450, 960, 10), (0, 400, 960, 10), (500, 350, 460, 10),
               (300, 290, 200, 10), (150, 210, 150, 40), (150, 180, 100, 40),

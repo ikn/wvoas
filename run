@@ -16,7 +16,7 @@ from wvoas.ext.fonthandler import Fonts
 
 pygame.mixer.pre_init(buffer = 1024)
 pygame.init()
-from wvoas.level import Level
+from wvoas.ui import Title
 from wvoas import conf
 
 ir = lambda x: int(round(x))
@@ -383,6 +383,6 @@ if __name__ == '__main__':
     restarting = True
     while restarting:
         restarting = False
-        Game(Level, 0).run()
+        Game(Title).run()
 
 pygame.quit()
