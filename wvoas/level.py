@@ -5,6 +5,7 @@ import pygame as pg
 from ext import evthandler as eh
 
 import conf
+import ui
 
 # load move sound
 snd = pg.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
@@ -172,10 +173,6 @@ class Level:
     def skip (self, evt):
         pass
 
-    def move (self, key, mode, mods, i):
-        if not self.paused:
-            self.player.move(i)
-
     def get_clip (self, r1, r2, err = 0):
         x01, y01, w, h = r1
         x11, y11 = x01 + w, y01 + h
@@ -328,11 +325,8 @@ class PlayableLevel (Level):
         ] + [
             (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1),
             (conf.KEYS_RESET, self.reset, eh.MODE_ONDOWN),
-            (conf.KEYS_BACK, self.toggle_paused, eh.MODE_ONDOWN)
+            (conf.KEYS_BACK, self.pause, eh.MODE_ONDOWN)
         ])
-        self.paused = False
-        self.was_paused = False
-        self.unpaused = False
         self.ID = None
         self.init(ID, cp)
 
@@ -357,6 +351,7 @@ class PlayableLevel (Level):
         self.player = Player(self, p)
         self.dying = False
         self.winning = False
+        self.paused = False
         # move window to player
         pos = pg.Rect(self.to_screen(self.player.rect)).center
         Level.init(self, data, window_pos = pos)
@@ -365,30 +360,23 @@ class PlayableLevel (Level):
         if not self.winning:
             self.init()
 
-    def toggle_paused (self, *args):
-        if self.paused:
-            self.paused = False
-            self.was_paused = False
-            self.unpaused = True
-        else:
-            self.paused = True
-            self.player.moving = False
-            move_channel.pause()
+    def pause (self, *args):
+        move_channel.pause()
+        self.game.start_backend(ui.Paused)
+        self.paused = True
 
     def skip (self, evt):
         if self.dying and self.dying_counter < conf.DIE_SKIP_THRESHOLD and \
            not (evt.type == pg.KEYDOWN and evt.key in conf.KEYS_BACK) and \
-           not self.paused and not self.winning:
+           not self.winning:
             self.dying = False
             self.init()
 
     def move (self, key, mode, mods, i):
-        if not self.paused:
-            self.player.move(i)
+        self.player.move(i)
 
     def jump (self, key, mode, mods):
-        if not self.paused:
-            self.player.jump(mode == 0)
+        self.player.jump(mode == 0)
 
     def handle_collisions (self):
         get_clip = self.get_clip
@@ -444,8 +432,6 @@ class PlayableLevel (Level):
             self.init(self.ID + 1)
 
     def update (self):
-        if self.paused and not self.first:
-            return
         # move player
         if not self.dying:
             self.player.update()
@@ -453,9 +439,9 @@ class PlayableLevel (Level):
         pl = self.player
         # move window
         x0, y0 = self.centre
-        if self.unpaused:
+        if self.paused:
             dx = dy = 0
-            self.unpaused = False
+            self.paused = False
         else:
             x, y = pg.mouse.get_pos()
             dx, dy = x - x0, y - y0
@@ -540,11 +526,6 @@ class PlayableLevel (Level):
         self.game.play_snd('die')
 
     def draw (self, screen):
-        if self.paused:
-            if self.was_paused and not self.first:
-                return
-            else:
-                self.was_paused = True
         self.first = False
         Level.draw(self, screen)
         # player

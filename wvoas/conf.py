@@ -44,6 +44,7 @@ KEYS_RESET = (pg.K_r, pg.K_p)
 
 # audio
 MUSIC_VOLUME = 70
+PAUSED_MUSIC_VOLUME = 20
 SOUND_VOLUME = 50
 EVENT_ENDMUSIC = pg.USEREVENT
 SOUNDS = {'hit': 10, 'die': 4}
@@ -56,6 +57,8 @@ DEFAULT_BG = 'bg'
 BGS = ('bg', 'title')
 FADE_TIME = 120
 FADE_RATE = 300 # rate * time_ratio = 255 * alpha
+PAUSE_FADE_TIME = 60
+PAUSE_FADE_RATE = 200 # rate * time_ratio = 255 * alpha
 PLAYER_OFFSET = (-2, -2)
 GOAL_OFFSET = (-17, -2)
 VOID_JITTER = (5, 5, 5)
