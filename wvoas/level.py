@@ -52,6 +52,7 @@ class Player:
     def __init__ (self, level, pos):
         self.level = level
         self.rect = list(pos) + list(conf.PLAYER_SIZE)
+        self.old_rect = list(self.rect)
         self.vel = [0, 0]
         self.on_ground = 0
         self.jumping = 0
@@ -122,6 +123,13 @@ class Player:
             self.on_ground -= 1
         if self.jumping:
             self.jumping -= 1
+
+    def update_vel (self):
+        o, r, v = self.old_rect, self.rect, self.vel
+        d = conf.LAUNCH_SPEED
+        v[0] += d * (r[0] - o[0] - v[0])
+        v[1] += d * (r[1] - o[1] - v[1])
+        self.old_rect = list(r)
 
 
 class Level:
@@ -362,13 +370,15 @@ class PlayableLevel (Level):
             self.paused = False
             self.was_paused = False
             self.unpaused = True
-        elif not self.dying:
+        else:
             self.paused = True
             self.player.moving = False
             move_channel.pause()
 
     def skip (self, evt):
-        if self.dying and self.dying_counter < conf.DIE_SKIP_THRESHOLD:
+        if self.dying and self.dying_counter < conf.DIE_SKIP_THRESHOLD and \
+           not (evt.type == pg.KEYDOWN and evt.key in conf.KEYS_BACK) and \
+           not self.paused and not self.winning:
             self.dying = False
             self.init()
 
@@ -440,6 +450,7 @@ class PlayableLevel (Level):
         if not self.dying:
             self.player.update()
         Level.update(self, False)
+        pl = self.player
         # move window
         x0, y0 = self.centre
         if self.unpaused:
@@ -462,6 +473,8 @@ class PlayableLevel (Level):
                 self.update_rects()
                 if not self.dying:
                     self.handle_collisions()
+        # update player velocity
+        pl.update_vel()
         # update death counter
         if self.dying:
             self.dying_counter -= 1
@@ -471,14 +484,14 @@ class PlayableLevel (Level):
         if not done:
             self.handle_collisions()
         if self.vert_dirn == 1:
-            self.player.on_ground = conf.ON_GROUND_TIME
+            pl.on_ground = conf.ON_GROUND_TIME
         # die if OoB
-        if self.player.rect[1] > conf.RES[1]:
+        if pl.rect[1] > conf.RES[1]:
             self.die()
         # win if at goal
         get_clip = self.get_clip
         w = self.window
-        p = self.player.rect
+        p = pl.rect
         c = get_clip(p, self.goal)
         if c and get_clip(w, c):
             self.win()

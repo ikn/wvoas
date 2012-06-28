@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/python2
 
 import sys
 import os
@@ -383,6 +383,10 @@ if __name__ == '__main__':
     restarting = True
     while restarting:
         restarting = False
-        Game(Title).run()
+        if conf.DEBUG:
+            from wvoas.level import PlayableLevel
+            Game(PlayableLevel, conf.DEBUG_INITIAL_LEVEL, conf.DEBUG_INITIAL_CP).run()
+        else:
+            Game(Title).run()
 
 pygame.quit()
