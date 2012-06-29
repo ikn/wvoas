@@ -10,7 +10,9 @@ from pygame.time import wait
 if os.name == 'nt':
     # for Windows freeze support
     import pygame._view
-os.chdir(os.path.dirname(sys.argv[0]))
+d = os.path.dirname(sys.argv[0])
+if d: # else current dir
+    os.chdir(d)
 from wvoas.ext import evthandler as eh
 from wvoas.ext.fonthandler import Fonts
 

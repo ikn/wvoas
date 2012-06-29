@@ -8,6 +8,9 @@ import level
 class Title (level.Level):
     def __init__ (self, game, event_handler, *level_args):
         level.Level.__init__(self, game, event_handler, conf.TITLE_LEVEL)
+        event_handler.add_key_handlers([
+            (conf.KEYS_BACK, lambda *args: game.quit_backend(), eh.MODE_ONDOWN)
+        ])
         self.level_args = level_args
 
     def skip (self, evt):
@@ -27,10 +30,13 @@ class Paused:
         event_handler.add_key_handlers([
             (conf.KEYS_BACK, self.finish, eh.MODE_ONDOWN)
         ])
-        pg.mixer.music.set_volume(conf.PAUSED_MUSIC_VOLUME * .01)
+        pg.mixer.music.set_volume(
+        conf.PAUSED_MUSIC_VOLUME * .01)
+        pg.mouse.set_visible(True)
 
     def finish (self, *args):
         pg.mixer.music.set_volume(conf.MUSIC_VOLUME * .01)
+        pg.mouse.set_visible(conf.MOUSE_VISIBLE)
         self.game.quit_backend()
 
     def update (self):
