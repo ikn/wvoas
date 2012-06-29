@@ -52,7 +52,6 @@ SOUND_VOLUMES = {'hit': 1. / 13, 'die': 2, 'move': .5}
 HIT_VOL_THRESHOLD = 2 # before scaling
 
 # graphics
-FONT = 'Chicle-Regular.ttf'
 DEFAULT_BG = 'bg'
 BGS = ('bg', 'title')
 FADE_TIME = 120
