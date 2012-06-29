@@ -332,6 +332,10 @@ class PlayableLevel (Level):
 
     def init (self, ID = None, cp = None):
         self.first = True
+        self.paused = False
+        self.dying = False
+        self.winning = False
+        # get level/current checkpoint
         if ID is None:
             ID = self.ID
         if ID != self.ID:
@@ -349,9 +353,6 @@ class PlayableLevel (Level):
         else:
             p = data['player_pos']
         self.player = Player(self, p)
-        self.dying = False
-        self.winning = False
-        self.paused = False
         # move window to player
         pos = pg.Rect(self.to_screen(self.player.rect)).center
         Level.init(self, data, window_pos = pos)
@@ -373,10 +374,12 @@ class PlayableLevel (Level):
             self.init()
 
     def move (self, key, mode, mods, i):
-        self.player.move(i)
+        if self.ID in conf.CAN_MOVE:
+            self.player.move(i)
 
     def jump (self, key, mode, mods):
-        self.player.jump(mode == 0)
+        if self.ID in conf.CAN_JUMP:
+            self.player.jump(mode == 0)
 
     def handle_collisions (self):
         get_clip = self.get_clip

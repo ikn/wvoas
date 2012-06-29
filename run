@@ -383,10 +383,11 @@ if __name__ == '__main__':
     restarting = True
     while restarting:
         restarting = False
+        args = (conf.DEBUG_INITIAL_LEVEL, conf.DEBUG_INITIAL_CP)
         if conf.DEBUG:
             from wvoas.level import PlayableLevel
-            Game(PlayableLevel, conf.DEBUG_INITIAL_LEVEL, conf.DEBUG_INITIAL_CP).run()
+            Game(PlayableLevel, *args).run()
         else:
-            Game(Title).run()
+            Game(Title, *args).run()
 
 pygame.quit()
