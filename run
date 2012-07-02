@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/python2
 
 import sys
 import os
@@ -104,6 +104,7 @@ EventHandler_instance in its event_handler attribute.
         # create event handler for this backend
         h = eh.MODE_HELD
         event_handler = eh.EventHandler({
+            pygame.ACTIVEEVENT: self._active_cb,
             pygame.VIDEORESIZE: self._resize_cb,
             conf.EVENT_ENDMUSIC: self.play_music
         }, [
@@ -364,12 +365,16 @@ volume: float to scale volume by.
             self.refresh_display()
 
     def minimise (self, *args):
-        """Minimise the display, pausing if possible (and necessary)."""
-        try:
-            self.backend.pause()
-        except AttributeError:
-            pass
+        """Minimise the display."""
         pygame.display.iconify()
+
+    def _active_cb (self, event):
+        """Callback to handle window focus loss."""
+        if event.state == 2 and not event.gain:
+            try:
+                self.backend.pause()
+            except AttributeError:
+                pass
 
     def _resize_cb (self, event):
         """Callback to handle a window resize."""

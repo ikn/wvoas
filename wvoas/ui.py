@@ -28,13 +28,13 @@ class Paused:
         self.sfc = pg.display.get_surface().copy()
         self.text = game.img('paused.png')
         event_handler.add_key_handlers([
-            (conf.KEYS_BACK, self.finish, eh.MODE_ONDOWN)
+            (conf.KEYS_BACK, self.unpause, eh.MODE_ONDOWN)
         ])
         pg.mixer.music.set_volume(
         conf.PAUSED_MUSIC_VOLUME * .01)
         pg.mouse.set_visible(True)
 
-    def finish (self, *args):
+    def unpause (self, *args):
         pg.mixer.music.set_volume(conf.MUSIC_VOLUME * .01)
         pg.mouse.set_visible(conf.MOUSE_VISIBLE)
         self.game.quit_backend()

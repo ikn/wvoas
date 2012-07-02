@@ -10,7 +10,7 @@ MUSIC_DIR = DATA_DIR + 'music' + sep
 FONT_DIR = DATA_DIR + 'font' + sep
 
 # display
-WINDOW_ICON = None #IMG_DIR + 'icon.png'
+WINDOW_ICON = IMG_DIR + 'icon.png'
 WINDOW_TITLE = ''
 MOUSE_VISIBLE = False
 FLAGS = 0
@@ -26,7 +26,7 @@ FPS = 60
 FRAME = 1. / FPS
 
 # debug
-DEBUG = False
+DEBUG = True
 DEBUG_INITIAL_LEVEL = 0
 DEBUG_INITIAL_CP = -1
 
