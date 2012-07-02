@@ -16,7 +16,8 @@ c.play(snd, -1)
 c.pause()
 c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
 
-def tile (screen, img, rect, jitter = None):
+def tile (screen, img, rect, jitter = None, full = None):
+    # get/update jitter
     if jitter is None:
         ox = oy = 0
     else:
@@ -33,20 +34,27 @@ def tile (screen, img, rect, jitter = None):
                 jitter[4] = oy
                 jitter[5] = t0
         jitter[5] -= 1
+    # get offset
+    if full is not None:
+        ox += rect[0] - full[0]
+        oy += rect[1] - full[1]
+    # draw
     i_w, i_h = img.get_size()
-    i_w -= ox
-    i_h -= oy
-    x, y0, w, h0 = rect
-    x1, y1 = x + w, y0 + h0
+    ox %= i_w
+    oy %= i_h
+    x0, y0, w0, h0 = rect
+    x1, y1 = x0 + w0, y0 + h0
+    x = x0
     while x < x1:
-        w = min(w, x1 - x)
+        this_ox = ox if x == x0 else 0
+        w = min(i_w - this_ox, x1 - x)
         y = y0
-        h = h0
         while y < y1:
-            h = min(h, y1 - y)
-            screen.blit(img, (x, y), (ox, oy, w, h))
-            y += i_h
-        x += i_w
+            this_oy = oy if y == y0 else 0
+            h = min(i_h - this_oy, y1 - y)
+            screen.blit(img, (x, y), (this_ox, this_oy, w, h))
+            y += h
+        x += w
 
 
 class Player:
@@ -279,8 +287,9 @@ class Level:
         # contains rects
         offset = (-w[0], -w[1])
         img = imgs['rect']
-        for r in self.rects:
-            tile(w_sfc, img, pg.Rect(to_screen(r)).move(offset))
+        for r, r_full in zip(self.rects, self.draw_rects):
+            tile(w_sfc, img, pg.Rect(to_screen(r)).move(offset),
+                 full = pg.Rect(to_screen(r_full)).move(offset))
         # window border
         w_sfc.blit(imgs['window'], (0, 0), None, pg.BLEND_RGBA_MULT)
         # copy window area to screen
