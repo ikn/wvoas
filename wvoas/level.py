@@ -7,6 +7,9 @@ from ext import evthandler as eh
 import conf
 import ui
 
+def random0 ():
+    return 2 * random() - 1
+
 # load move sound
 snd = pg.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
 move_channel = c = pg.mixer.find_channel()
@@ -152,9 +155,10 @@ class Level:
             pg.MOUSEBUTTONDOWN: self.skip
         })
         self.centre = (conf.RES[0] / 2, conf.RES[1] / 2)
+        self.clouds = []
+        self.load_graphics()
         if data is not None:
             self.init(data)
-        self.load_graphics()
 
     def init (self, data, window_pos = None):
         self.fading = False
@@ -170,7 +174,6 @@ class Level:
         w, h = conf.HALF_WINDOW_SIZE
         self.window = pg.Rect(x - w, y - h, 2 * w, 2 * h)
         # objs
-        w, h = conf.RES
         self.all_rects = data['rects']
         self.update_rects()
         self.arects = data.get('arects', [])
@@ -204,30 +207,50 @@ class Level:
                 rects.append(c)
 
     def update (self, move_window = True):
-        # update fade counter
+        # fade counter
         if self.fading:
             self.fade_counter -= 1
             if self.fade_counter == 0:
                 self.fading = False
                 del self.fade_sfc
                 self.fade_cb()
+        # move window
         if move_window:
-            # move window
             x0, y0 = self.centre
             x, y = pg.mouse.get_pos()
             dx, dy = x - x0, y - y0
             pg.mouse.set_pos(x0, y0)
             self.window = self.window.move(dx, dy)
             self.update_rects()
-        # update particles
+        # clouds
+        if self.clouds:
+            # jitter
+            jx = conf.CLOUD_JITTER
+            jy = jx * conf.CLOUD_VERT_SPEED_RATIO
+            v0 = self.cloud_vel
+            v0[0] += jx * random0()
+            v0[1] += jy * random0()
+            r = conf.RES
+            for p, v, s in self.clouds:
+                for i, (i_w, w) in enumerate(zip(s, r)):
+                    # move
+                    x = p[i]
+                    x += v0[i] + v[i]
+                    # wrap
+                    if x + i_w < 0:
+                        x = w
+                    elif x > w:
+                        x = -i_w
+                    p[i] = x
+        # particles
         ptcls = []
         for c, p, v, size, k, j, t in self.particles:
             p[0] += v[0]
             p[1] += v[1]
             v[0] *= k
             v[1] *= k
-            v[0] += j * (random() - .5)
-            v[1] += j * (random() - .5)
+            v[0] += j * random0()
+            v[1] += j * random0()
             t -= 1
             if t != 0:
                 ptcls.append((c, p, v, size, k, j, t))
@@ -240,32 +263,11 @@ class Level:
             self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
             self.fade_cb = cb
 
-    def add_ptcls (self, key, pos, dirn = .5):
-        particles = self.particles
-        data = conf.PARTICLES[key]
-        max_speed = data['speed']
-        max_size = data['size']
-        k = data['damping']
-        j = data['jitter']
-        max_life = data['life']
-        dirn *= pi / 2
-        for c, amount in data['colours']:
-            a, b = divmod(amount, 1)
-            amount = int(a) + (1 if random() < b else 0)
-            while amount > 0:
-                size = randint(1, max_size)
-                amount -= size
-                angle = random() * 2 * pi
-                speed = max_speed * expovariate(5)
-                v = [speed * cos(dirn) * cos(angle), speed * sin(dirn) * sin(angle)]
-                life = int(random() * max_life)
-                if life > 0:
-                    particles.append((c, list(pos), v, size, k, j, life))
-
     def load_graphics (self):
         self.imgs = imgs = {}
-        for img in conf.BGS + ('void', 'window', 'rect', 'arect', 'player',
-                               'checkpoint-current', 'checkpoint', 'goal'):
+        for img in ('void', 'window', 'rect', 'arect', 'player',
+                    'checkpoint-current', 'checkpoint', 'goal') + \
+                   conf.BGS + conf.CLOUDS:
             imgs[img] = self.game.img(img + '.png')
         img = imgs['player']
         imgs['player'] = [img, pg.transform.flip(img, True, False)]
@@ -283,8 +285,11 @@ class Level:
         # window
         w = self.window
         w_sfc = self.window_sfc
+        # window background
         w_sfc.blit(imgs[self.bg], (0, 0), w)
-        # contains rects
+        for c, (p, v, s) in zip(conf.CLOUDS, self.clouds):
+            w_sfc.blit(imgs[c], to_screen((p[0] - w[0], p[1] - w[1])))
+        # rects in window
         offset = (-w[0], -w[1])
         img = imgs['rect']
         for r, r_full in zip(self.rects, self.draw_rects):
@@ -346,10 +351,29 @@ class PlayableLevel (Level):
         self.winning = False
         # get level/current checkpoint
         if ID is None:
+            # same level
             ID = self.ID
         if ID != self.ID:
+            # new level
             self.ID = ID
             self.current_cp = cp if cp is not None else -1
+            # clouds
+            self.clouds = cs = []
+            w, h = conf.RES
+            imgs = self.imgs
+            vx0 = conf.CLOUD_SPEED
+            vy0 = vx0 * conf.CLOUD_VERT_SPEED_RATIO
+            self.cloud_vel = [vx0 * random0(), vy0 * random0()]
+            vx = conf.CLOUD_MOD_SPEED_RATIO
+            vy = vx * conf.CLOUD_VERT_SPEED_RATIO
+            for c in conf.CLOUDS:
+                c_w, c_h = imgs[c].get_size()
+                s = (c_w, c_h)
+                c_w /= 2
+                c_h /= 2
+                pos = [randint(-c_w, w - c_w), randint(-c_h, h - c_h)]
+                vel = [vx * random0(), vy * random0()]
+                cs.append((pos, vel, s))
         elif cp is not None:
             self.current_cp = cp
         data = conf.LEVELS[ID]
@@ -471,9 +495,9 @@ class PlayableLevel (Level):
                 self.update_rects()
                 if not self.dying:
                     self.handle_collisions()
-        # update player velocity
+        # player velocity
         pl.update_vel()
-        # update death counter
+        # death counter
         if self.dying:
             self.dying_counter -= 1
             if self.dying_counter == 0:

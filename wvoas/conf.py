@@ -26,7 +26,7 @@ FPS = 60
 FRAME = 1. / FPS
 
 # debug
-DEBUG = True
+DEBUG = False
 DEBUG_INITIAL_LEVEL = 0
 DEBUG_INITIAL_CP = -1
 
@@ -52,15 +52,24 @@ SOUND_VOLUMES = {'hit': 1. / 13, 'die': 2, 'move': .5}
 HIT_VOL_THRESHOLD = 2 # before scaling
 
 # graphics
+# images
 DEFAULT_BG = 'bg'
 BGS = ('bg', 'title')
+NUM_CLOUDS = 4
+CLOUDS = tuple('cloud{0}'.format(i) for i in xrange(NUM_CLOUDS))
+CLOUD_SPEED = .5
+CLOUD_VERT_SPEED_RATIO = .1
+CLOUD_MOD_SPEED_RATIO = .2
+CLOUD_JITTER = .01
+PLAYER_OFFSET = (-2, -2)
+GOAL_OFFSET = (-17, -2)
+VOID_JITTER = (5, 5, 5)
+# fades
 FADE_TIME = 120
 FADE_RATE = 300 # rate * time_ratio = 255 * alpha
 PAUSE_FADE_TIME = 60
 PAUSE_FADE_RATE = 200 # rate * time_ratio = 255 * alpha
-PLAYER_OFFSET = (-2, -2)
-GOAL_OFFSET = (-17, -2)
-VOID_JITTER = (5, 5, 5)
+# particles
 PARTICLES = {
     'die': {
         'colours': (((36, 130, 36), 1500), ((25, 91, 25), 1000),
@@ -69,7 +78,7 @@ PARTICLES = {
         'life': 180,
         'size': 5,
         'damping': .98,
-        'jitter': .07
+        'jitter': .035
     }, 'move': {
         'colours': (((10, 10, 10), .2), ((30, 30, 30), .1),
                     ((36, 130, 36), .05), ((25, 91, 25), .02),
