@@ -7,7 +7,6 @@ DATA_DIR = ''
 IMG_DIR = DATA_DIR + 'img' + sep
 SOUND_DIR = DATA_DIR + 'sound' + sep
 MUSIC_DIR = DATA_DIR + 'music' + sep
-FONT_DIR = DATA_DIR + 'font' + sep
 
 # display
 WINDOW_ICON = IMG_DIR + 'icon.png'
@@ -29,6 +28,8 @@ FRAME = 1. / FPS
 DEBUG = False
 DEBUG_INITIAL_LEVEL = 0
 DEBUG_INITIAL_CP = -1
+PROFILE_STATS_FILE = '.profile_stats'
+DEFAULT_PROFILE_TIME = 5
 
 # input
 KEYS_NEXT = (pg.K_RETURN, pg.K_SPACE, pg.K_KP_ENTER)
@@ -157,10 +158,10 @@ LEVELS = [{
     'rects': [(0, 350, 960, 45)],
     'arects': [(250, 250, 460, 100)]
 }, {
-    'player_pos': (100, 220),
-    'goal': (50, 80),
+    'player_pos': (100, 240),
+    'goal': (50, 50),
     'checkpoints': [(785, 210)],
-    'rects': [(100, 0, 570, 150), (0, 250, 250, 10), (330, 520, 150, 20),
+    'rects': [(100, 0, 570, 150), (0, 270, 250, 10), (330, 520, 150, 20),
               (570, 150, 100, 130), (570, 400, 100, 140), (740, 230, 100, 220)]
 }, {
     'player_pos': (150, 420),

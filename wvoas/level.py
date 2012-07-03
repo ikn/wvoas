@@ -175,11 +175,35 @@ class Level:
         self.window = pg.Rect(x - w, y - h, 2 * w, 2 * h)
         # objs
         self.all_rects = data['rects']
+        self.all_vrects = data.get('vrects', [])
         self.update_rects()
         self.arects = data.get('arects', [])
         self.particles = []
         # centre mouse to avoid initial window movement
         pg.mouse.set_pos(self.centre)
+
+    def update_window (self):
+        w = self.window
+        wp0 = w.topleft
+        wp1 = w.bottomright
+        s = conf.RES
+        self.inverse_win = rs = []
+        for px in (0, 1, 2):
+            for py in (0, 1, 2):
+                if px == py == 1:
+                    continue
+                r = [0, 0, 0, 0]
+                for i, p in enumerate((px, py)):
+                    if p == 0:
+                        r[i + 2] = wp0[i]
+                    if p == 1:
+                        r[i] = wp0[i]
+                        r[i + 2] = wp1[i] - wp0[i]
+                    elif p == 2:
+                        r[i] = wp1[i]
+                        r[i + 2] = s[i] - wp1[i]
+                if r[2] > 0 and r[3] > 0:
+                    rs.append(r)
 
     def skip (self, evt):
         pass
@@ -196,15 +220,26 @@ class Level:
             return (x0, y0, w, h)
 
     def update_rects (self):
+        self.update_window()
+        get_clip = self.get_clip
+        to_screen = self.to_screen
+        # rects
         self.rects = rects = []
         self.draw_rects = draw = []
         w = list(self.window)
-        get_clip = self.get_clip
         for r in self.all_rects:
-            c = self.get_clip(r, w)
+            c = get_clip(r, w)
             if c:
-                draw.append(r)
                 rects.append(c)
+                draw.append(pg.Rect(to_screen(r)))
+        # vrects
+        self.vrects = rects = []
+        ws = self.inverse_win
+        for r in self.all_vrects:
+            for w in ws:
+                c = get_clip(r, w)
+                if c:
+                    rects.append(c)
 
     def update (self, move_window = True):
         # fade counter
@@ -220,7 +255,7 @@ class Level:
             x, y = pg.mouse.get_pos()
             dx, dy = x - x0, y - y0
             pg.mouse.set_pos(x0, y0)
-            self.window = self.window.move(dx, dy)
+            self.window.move_ip(dx, dy)
             self.update_rects()
         # clouds
         if self.clouds:
@@ -265,7 +300,7 @@ class Level:
 
     def load_graphics (self):
         self.imgs = imgs = {}
-        for img in ('void', 'window', 'rect', 'arect', 'player',
+        for img in ('void', 'window', 'rect', 'vrect', 'arect', 'player',
                     'checkpoint-current', 'checkpoint', 'goal') + \
                    conf.BGS + conf.CLOUDS:
             imgs[img] = self.game.img(img + '.png')
@@ -282,19 +317,23 @@ class Level:
         to_screen = self.to_screen
         # background
         tile(screen, imgs['void'], (0, 0) + screen.get_size(), self.void_jitter)
+        # vrects
+        img = imgs['vrect']
+        for r in self.all_vrects:
+            tile(screen, img, r)
         # window
         w = self.window
+        offset = (-w[0], -w[1])
         w_sfc = self.window_sfc
         # window background
         w_sfc.blit(imgs[self.bg], (0, 0), w)
         for c, (p, v, s) in zip(conf.CLOUDS, self.clouds):
-            w_sfc.blit(imgs[c], to_screen((p[0] - w[0], p[1] - w[1])))
+            w_sfc.blit(imgs[c], pg.Rect(to_screen(p + [0, 0])).move(offset))
         # rects in window
-        offset = (-w[0], -w[1])
         img = imgs['rect']
         for r, r_full in zip(self.rects, self.draw_rects):
             tile(w_sfc, img, pg.Rect(to_screen(r)).move(offset),
-                 full = pg.Rect(to_screen(r_full)).move(offset))
+                 full = r_full.move(offset))
         # window border
         w_sfc.blit(imgs['window'], (0, 0), None, pg.BLEND_RGBA_MULT)
         # copy window area to screen
@@ -419,7 +458,7 @@ class PlayableLevel (Level):
         p = self.player.rect
         p0 = list(p)
         v = self.player.vel
-        for r in self.rects + self.arects:
+        for r in self.rects + self.vrects + self.arects:
             if get_clip(r, p):
                 r_x0, r_y0, w, h = r
                 r_x1, r_y1 = r_x0 + w, r_y0 + h
@@ -445,7 +484,8 @@ class PlayableLevel (Level):
         # die if still colliding
         axes = set()
         e = conf.ERR
-        colliding = [r for r in self.rects + self.arects if get_clip(r, p, e)]
+        colliding = [r for r in self.rects + self.vrects + self.arects \
+                     if get_clip(r, p, e)]
         if colliding:
             for r in colliding:
                 r_x0, r_y0, w, h = r
@@ -491,7 +531,7 @@ class PlayableLevel (Level):
                 d -= dirn
                 rel = [0, 0]
                 rel[axis] += dirn
-                self.window = self.window.move(rel)
+                self.window.move_ip(rel)
                 self.update_rects()
                 if not self.dying:
                     self.handle_collisions()

@@ -1,0 +1,10 @@
+release 1:
+ * 9 extra levels (now 16 total), and changes to some existing levels
+ * title screen
+ * show cursor and text and lower music volume on pause
+ * pause when the window loses focus
+ * clouds in background move
+ * icon
+ * more keyboard controls (including AZERTY support)
+ * particles when running and jumping
+ * code cleanup, gameplay tweaks, bug fixes

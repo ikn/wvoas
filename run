@@ -1,6 +1,6 @@
 #! /usr/bin/python
 
-import sys
+from sys import argv
 import os
 from time import time
 from random import choice
@@ -10,11 +10,10 @@ from pygame.time import wait
 if os.name == 'nt':
     # for Windows freeze support
     import pygame._view
-d = os.path.dirname(sys.argv[0])
+d = os.path.dirname(argv[0])
 if d: # else current dir
     os.chdir(d)
 from wvoas.ext import evthandler as eh
-from wvoas.ext.fonthandler import Fonts
 
 pygame.mixer.pre_init(buffer = 1024)
 pygame.init()
@@ -50,7 +49,6 @@ running: set to False to exit the main loop (Game.run).
 imgs: image cache.
 files: loaded image cache (before resize).
 music: filenames for known music.
-fonts: a Fonts instance.
 backend: the current running backend.
 backends: a list of previous (nested) backends, most 'recent' last.
 
@@ -67,7 +65,6 @@ backends: a list of previous (nested) backends, most 'recent' last.
         self.play_music()
         # load display settings
         self.refresh_display()
-        self.fonts = Fonts(conf.FONT_DIR)
         # start first backend
         self.backends = []
         self.start_backend(cls, *args)
@@ -307,22 +304,28 @@ volume: float to scale volume by.
         elif draw:
             pygame.display.update(draw)
 
-    def run (self):
+    def run (self, n = 0):
         """Main loop."""
         self.running = True
+        update = self._update
+        draw = self._draw
         t0 = time()
         while self.running:
             # update
             self._update_again = False
-            self._update()
+            update()
             if self._update_again:
                 self._update_again = False
-                self._update()
+                update()
             # draw
-            self._draw()
+            draw()
             # wait
             t1 = time()
             t0 = t1 + wait(int(1000 * (self.backend.frame - t1 + t0))) / 1000.
+            # counter
+            n -= 1
+            if n == 0:
+                break
 
     def restart (self, *args):
         """Restart the game."""
@@ -387,14 +390,30 @@ if __name__ == '__main__':
     if conf.WINDOW_TITLE is not None:
         pygame.display.set_caption(conf.WINDOW_TITLE)
     pygame.mouse.set_visible(conf.MOUSE_VISIBLE)
-    restarting = True
-    while restarting:
-        restarting = False
-        args = (conf.DEBUG_INITIAL_LEVEL, conf.DEBUG_INITIAL_CP)
-        if conf.DEBUG:
-            from wvoas.level import PlayableLevel
-            Game(PlayableLevel, *args).run()
+    args = (conf.DEBUG_INITIAL_LEVEL, conf.DEBUG_INITIAL_CP)
+    if len(argv) >= 2 and argv[1] == 'profile':
+        # profile
+        from cProfile import run as profile
+        from pstats import Stats
+        if len(argv) >= 3:
+            t = int(argv[2])
         else:
-            Game(Title, *args).run()
+            t = conf.DEFAULT_PROFILE_TIME
+        t *= conf.FPS
+        fn = conf.PROFILE_STATS_FILE
+        from wvoas.level import PlayableLevel
+        profile('Game(PlayableLevel, *args).run(t)', fn, locals())
+        Stats(fn).strip_dirs().sort_stats('cumulative').print_stats(20)
+        os.unlink(fn)
+    else:
+        # run normally
+        restarting = True
+        while restarting:
+            restarting = False
+            if conf.DEBUG:
+                from wvoas.level import PlayableLevel
+                Game(PlayableLevel, *args).run()
+            else:
+                Game(Title, *args).run()
 
 pygame.quit()
