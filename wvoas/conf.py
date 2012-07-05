@@ -51,55 +51,6 @@ SOUNDS = {'hit': 10, 'die': 4}
 SOUND_VOLUMES = {'hit': 1. / 13, 'die': 2, 'move': .5}
 HIT_VOL_THRESHOLD = 2 # before scaling
 
-# graphics
-# images
-DEFAULT_BG = 'bg'
-BGS = ('bg', 'bg0')
-NUM_CLOUDS = 4
-CLOUDS = tuple('cloud{0}'.format(i) for i in xrange(NUM_CLOUDS))
-CLOUD_SPEED = .5
-CLOUD_VERT_SPEED_RATIO = .1
-CLOUD_MOD_SPEED_RATIO = .2
-CLOUD_JITTER = .01
-PLAYER_OFFSET = (-2, -2)
-GOAL_OFFSET = (-17, -2)
-VOID_JITTER = (5, 5, 5)
-# fades
-FADE_TIME = 120
-FADE_RATE = 300 # rate * time_ratio = 255 * alpha
-PAUSE_FADE_TIME = 60
-PAUSE_FADE_RATE = 200 # rate * time_ratio = 255 * alpha
-# particles
-PARTICLES = {
-    'die': {
-        'colours': (((36, 130, 36), 1500), ((25, 91, 25), 1000),
-                    ((47, 169, 47), 500)),
-        'speed': 10,
-        'life': 180,
-        'size': 5,
-        'damping': .98,
-        'jitter': .035
-    }, 'move': {
-        'colours': (((10, 10, 10), .2), ((30, 30, 30), .1),
-                    ((36, 130, 36), .05), ((25, 91, 25), .02),
-                    ((47, 169, 47), .02)),
-        'speed': 2,
-        'life': 60,
-        'size': 4,
-        'damping': 1,
-        'jitter': 0
-    }, 'jump': {
-        'colours': (((10, 10, 10), 20), ((30, 30, 30), 10),
-                    ((36, 130, 36), 5), ((25, 91, 25), 2),
-                    ((47, 169, 47), 2)),
-        'speed': 5,
-        'life': 90,
-        'size': 4,
-        'damping': .98,
-        'jitter': 0
-    }
-}
-
 # gameplay
 PLAYER_SIZE = (15, 30)
 PLAYER_SPEED = 1
@@ -125,8 +76,8 @@ ERR = 10 ** -10
 CAN_JUMP = range(8)
 CAN_MOVE = range(12)
 LEVELS = [{
-    'bg': 'bg0',
-    'player_pos': (100, 0),
+    'bgs': ('bg', ('bg0', (154, 75))),
+    'player_pos': (100, 25),
     'goal': (100, 440),
     'rects': [(0, 300, 960, 100), (0, 500, 960, 40)],
     'arects': [(0, 55, 850, 5), (110, 185, 960, 5)]
@@ -217,3 +168,53 @@ LEVELS = [{
     'rects': [(0, 340, 300, 60), (300, 240, 460, 10), (760, 340, 200, 60)],
     'arects': [(300, 250, 460, 150)]
 }]
+
+# graphics
+# images
+DEFAULT_BGS = ('bg',)
+BGS = DEFAULT_BGS + sum((l.get('bgs', ()) for l in LEVELS), ())
+BGS = tuple(set([bg if isinstance(bg, str) else bg[0] for bg in BGS]))
+NUM_CLOUDS = 4
+CLOUDS = tuple('cloud{0}'.format(i) for i in xrange(NUM_CLOUDS))
+CLOUD_SPEED = .5
+CLOUD_VERT_SPEED_RATIO = .1
+CLOUD_MOD_SPEED_RATIO = .2
+CLOUD_JITTER = .01
+PLAYER_OFFSET = (-2, -2)
+GOAL_OFFSET = (-17, -2)
+VOID_JITTER = (10, 10, 5)
+# fades
+FADE_TIME = 120
+FADE_RATE = 300 # rate * time_ratio = 255 * alpha
+PAUSE_FADE_TIME = 60
+PAUSE_FADE_RATE = 200 # rate * time_ratio = 255 * alpha
+# particles
+PARTICLES = {
+    'die': {
+        'colours': (((36, 130, 36), 1500), ((25, 91, 25), 1000),
+                    ((47, 169, 47), 500)),
+        'speed': 10,
+        'life': 180,
+        'size': 5,
+        'damping': .98,
+        'jitter': .035
+    }, 'move': {
+        'colours': (((10, 10, 10), .2), ((30, 30, 30), .1),
+                    ((36, 130, 36), .05), ((25, 91, 25), .02),
+                    ((47, 169, 47), .02)),
+        'speed': 2,
+        'life': 60,
+        'size': 4,
+        'damping': 1,
+        'jitter': 0
+    }, 'jump': {
+        'colours': (((10, 10, 10), 20), ((30, 30, 30), 10),
+                    ((36, 130, 36), 5), ((25, 91, 25), 2),
+                    ((47, 169, 47), 2)),
+        'speed': 5,
+        'life': 90,
+        'size': 4,
+        'damping': .98,
+        'jitter': 0
+    }
+}

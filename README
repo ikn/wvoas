@@ -26,7 +26,7 @@ the last one you touched turns green.
 
 arrow keys, WASD: move, jump.
 space: jump.
-escape, backspace: pause; quit on title screen.
+escape, backspace: pause.
 escape, backspace, space, enter: unpause.
 mouse movement: move the visible window.
 R: reset the level.

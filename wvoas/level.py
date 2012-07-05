@@ -248,7 +248,7 @@ class Level:
             self.current_cp = cp
         data = conf.LEVELS[ID]
         # background
-        self.bg = data.get('bg', conf.DEFAULT_BG)
+        self.bgs = data.get('bgs', conf.DEFAULT_BGS)
         # player
         if self.current_cp >= 0:
             p = list(data['checkpoints'][self.current_cp][:2])
@@ -562,6 +562,9 @@ class Level:
             self.fade_cb = cb
 
     def draw (self, screen):
+        # HACK
+        if self.winning and not self.fading and self.ID == len(conf.LEVELS) - 1:
+            return False
         self.first = False
         imgs = self.imgs
         to_screen = self.to_screen
@@ -575,8 +578,14 @@ class Level:
         w = self.window
         offset = (-w[0], -w[1])
         w_sfc = self.window_sfc
-        # window background
-        w_sfc.blit(imgs[self.bg], (0, 0), w)
+        # window background: static images
+        for img in self.bgs:
+            if isinstance(img, str):
+                pos = (0, 0)
+            else:
+                img, pos = img
+            w_sfc.blit(imgs[img], pg.Rect(pos + (0, 0)).move(offset))
+        # clouds
         for c, (p, v, s) in zip(conf.CLOUDS, self.clouds):
             w_sfc.blit(imgs[c], pg.Rect(to_screen(p + [0, 0])).move(offset))
         # rects in window
@@ -592,10 +601,6 @@ class Level:
         img = imgs['arect']
         for r in self.arects:
             tile(screen, img, to_screen(r))
-        # player
-        if not self.dying:
-            p = self.to_screen(self.player.rect)
-            screen.blit(imgs['player'], pg.Rect(p).move(conf.PLAYER_OFFSET))
         # goal
         r = pg.Rect(to_screen(self.goal)).move(conf.GOAL_OFFSET)
         screen.blit(imgs['goal'], r)
@@ -605,6 +610,10 @@ class Level:
             img = imgs['checkpoint' + ('-current' if i == self.current_cp else '')]
             if c:
                 screen.blit(img, c, c.move(-r[0], -r[1]))
+        # player
+        if not self.dying:
+            p = self.to_screen(self.player.rect)
+            screen.blit(imgs['player'], pg.Rect(p).move(conf.PLAYER_OFFSET))
         # particles
         for c, p, v, size, k, j, t in self.particles:
             screen.fill(c, p + [size, size])
