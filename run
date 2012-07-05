@@ -17,7 +17,7 @@ from wvoas.ext import evthandler as eh
 
 pygame.mixer.pre_init(buffer = 1024)
 pygame.init()
-from wvoas.ui import Title
+from wvoas.level import Level
 from wvoas import conf
 
 ir = lambda x: int(round(x))
@@ -401,8 +401,7 @@ if __name__ == '__main__':
             t = conf.DEFAULT_PROFILE_TIME
         t *= conf.FPS
         fn = conf.PROFILE_STATS_FILE
-        from wvoas.level import PlayableLevel
-        profile('Game(PlayableLevel, *args).run(t)', fn, locals())
+        profile('Game(Level, *args).run(t)', fn, locals())
         Stats(fn).strip_dirs().sort_stats('cumulative').print_stats(20)
         os.unlink(fn)
     else:
@@ -410,10 +409,6 @@ if __name__ == '__main__':
         restarting = True
         while restarting:
             restarting = False
-            if conf.DEBUG:
-                from wvoas.level import PlayableLevel
-                Game(PlayableLevel, *args).run()
-            else:
-                Game(Title, *args).run()
+            Game(Level, *args).run()
 
 pygame.quit()

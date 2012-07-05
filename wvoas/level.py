@@ -5,7 +5,6 @@ import pygame as pg
 from ext import evthandler as eh
 
 import conf
-import ui
 
 def random0 ():
     return 2 * random() - 1
@@ -144,8 +143,52 @@ class Player:
         self.old_rect = list(r)
 
 
+class Paused:
+    def __init__ (self, game, event_handler):
+        self.game = game
+        self.event_handler = event_handler
+        self.frame = conf.FRAME
+        self.fading = True
+        self.fade_counter = conf.PAUSE_FADE_TIME
+        self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
+        self.sfc = pg.display.get_surface().copy()
+        self.text = game.img('paused.png')
+        event_handler.add_key_handlers([
+            (conf.KEYS_BACK + conf.KEYS_NEXT, self.unpause, eh.MODE_ONDOWN)
+        ])
+        pg.mixer.music.set_volume(conf.PAUSED_MUSIC_VOLUME * .01)
+        pg.mouse.set_visible(True)
+
+    def unpause (self, *args):
+        pg.mixer.music.set_volume(conf.MUSIC_VOLUME * .01)
+        pg.mouse.set_visible(conf.MOUSE_VISIBLE)
+        self.game.quit_backend()
+
+    def update (self):
+        pass
+
+    def draw (self, screen):
+        if self.fading:
+            # draw
+            t = conf.PAUSE_FADE_TIME - self.fade_counter
+            alpha = conf.PAUSE_FADE_RATE * float(t) / conf.PAUSE_FADE_TIME
+            alpha = min(255, int(round(alpha)))
+            self.fade_sfc.fill((0, 0, 0, alpha))
+            screen.blit(self.sfc, (0, 0))
+            screen.blit(self.fade_sfc, (0, 0))
+            screen.blit(self.text, (0, 0))
+            # update counter
+            self.fade_counter -= 1
+            if self.fade_counter == 0:
+                self.fading = False
+                del self.fade_sfc
+            return True
+        else:
+            return False
+
+
 class Level:
-    def __init__ (self, game, event_handler, data = None):
+    def __init__ (self, game, event_handler, ID = 0, cp = -1):
         self.game = game
         self.event_handler = event_handler
         self.frame = conf.FRAME
@@ -154,33 +197,107 @@ class Level:
             pg.KEYDOWN: self.skip,
             pg.MOUSEBUTTONDOWN: self.skip
         })
+        event_handler.add_key_handlers([
+            (conf.KEYS_BACK, self.pause, eh.MODE_ONDOWN),
+            (conf.KEYS_RESET, self.reset, eh.MODE_ONDOWN),
+            (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1)
+        ] + [
+            (ks, [(self.move, (i,))], eh.MODE_HELD)
+            for i, ks in enumerate(conf.KEYS_MOVE)
+        ])
         self.centre = (conf.RES[0] / 2, conf.RES[1] / 2)
         self.clouds = []
         self.load_graphics()
-        if data is not None:
-            self.init(data)
+        # load first level
+        self.ID = None
+        self.init(ID, cp)
 
-    def init (self, data, window_pos = None):
+    def init (self, ID = None, cp = None):
+        self.first = True
+        self.paused = False
+        self.dying = False
+        self.winning = False
         self.fading = False
+        self.particles = []
+        # get level/current checkpoint
+        if ID is None:
+            # same level
+            ID = self.ID
+        if ID != self.ID:
+            # new level
+            self.ID = ID
+            self.current_cp = cp if cp is not None else -1
+            # clouds: randomise initial positions and velocities
+            self.clouds = cs = []
+            w, h = conf.RES
+            imgs = self.imgs
+            vx0 = conf.CLOUD_SPEED
+            vy0 = vx0 * conf.CLOUD_VERT_SPEED_RATIO
+            self.cloud_vel = [vx0 * random0(), vy0 * random0()]
+            vx = conf.CLOUD_MOD_SPEED_RATIO
+            vy = vx * conf.CLOUD_VERT_SPEED_RATIO
+            for c in conf.CLOUDS:
+                c_w, c_h = imgs[c].get_size()
+                s = (c_w, c_h)
+                c_w /= 2
+                c_h /= 2
+                pos = [randint(-c_w, w - c_w), randint(-c_h, h - c_h)]
+                vel = [vx * random0(), vy * random0()]
+                cs.append((pos, vel, s))
+        elif cp is not None:
+            self.current_cp = cp
+        data = conf.LEVELS[ID]
         # background
         self.bg = data.get('bg', conf.DEFAULT_BG)
+        # player
+        if self.current_cp >= 0:
+            p = list(data['checkpoints'][self.current_cp][:2])
+            s_p, s_c = conf.PLAYER_SIZE, conf.CHECKPOINT_SIZE
+            for i in (0, 1):
+                p[i] += float(s_c[i] - s_p[i]) / 2
+        else:
+            p = data['player_pos']
+        self.player = Player(self, p)
+        # window
+        x, y = pg.Rect(self.to_screen(self.player.rect)).center
+        w, h = conf.HALF_WINDOW_SIZE
+        self.window = pg.Rect(x - w, y - h, 2 * w, 2 * h)
+        # centre mouse to avoid initial window movement
+        pg.mouse.set_pos(self.centre)
         # checkpoints
         s = conf.CHECKPOINT_SIZE
         self.checkpoints = [p + s for p in data.get('checkpoints', [])]
         # goal
         self.goal = data['goal'] + conf.GOAL_SIZE
-        # window
-        x, y = self.centre if window_pos is None else window_pos
-        w, h = conf.HALF_WINDOW_SIZE
-        self.window = pg.Rect(x - w, y - h, 2 * w, 2 * h)
-        # objs
+        # rects
         self.all_rects = data['rects']
         self.all_vrects = data.get('vrects', [])
-        self.update_rects()
         self.arects = data.get('arects', [])
-        self.particles = []
-        # centre mouse to avoid initial window movement
-        pg.mouse.set_pos(self.centre)
+        self.update_rects()
+
+    def skip (self, evt):
+        if self.dying and self.dying_counter < conf.DIE_SKIP_THRESHOLD and \
+           not (evt.type == pg.KEYDOWN and evt.key in conf.KEYS_BACK) and \
+           not self.winning:
+            self.dying = False
+            self.init()
+
+    def pause (self, *args):
+        move_channel.pause()
+        self.game.start_backend(Paused)
+        self.paused = True
+
+    def reset (self, *args):
+        if not self.winning:
+            self.init()
+
+    def jump (self, key, mode, mods):
+        if self.ID in conf.CAN_JUMP:
+            self.player.jump(mode == 0)
+
+    def move (self, key, mode, mods, i):
+        if self.ID in conf.CAN_MOVE:
+            self.player.move(i)
 
     def update_window (self):
         w = self.window
@@ -204,9 +321,6 @@ class Level:
                         r[i + 2] = s[i] - wp1[i]
                 if r[2] > 0 and r[3] > 0:
                     rs.append(r)
-
-    def skip (self, evt):
-        pass
 
     def get_clip (self, r1, r2, err = 0):
         x01, y01, w, h = r1
@@ -240,218 +354,6 @@ class Level:
                 c = get_clip(r, w)
                 if c:
                     rects.append(c)
-
-    def update (self, move_window = True):
-        # fade counter
-        if self.fading:
-            self.fade_counter -= 1
-            if self.fade_counter == 0:
-                self.fading = False
-                del self.fade_sfc
-                self.fade_cb()
-        # move window
-        if move_window:
-            x0, y0 = self.centre
-            x, y = pg.mouse.get_pos()
-            dx, dy = x - x0, y - y0
-            pg.mouse.set_pos(x0, y0)
-            self.window.move_ip(dx, dy)
-            self.update_rects()
-        # clouds
-        if self.clouds:
-            # jitter
-            jx = conf.CLOUD_JITTER
-            jy = jx * conf.CLOUD_VERT_SPEED_RATIO
-            v0 = self.cloud_vel
-            v0[0] += jx * random0()
-            v0[1] += jy * random0()
-            r = conf.RES
-            for p, v, s in self.clouds:
-                for i, (i_w, w) in enumerate(zip(s, r)):
-                    # move
-                    x = p[i]
-                    x += v0[i] + v[i]
-                    # wrap
-                    if x + i_w < 0:
-                        x = w
-                    elif x > w:
-                        x = -i_w
-                    p[i] = x
-        # particles
-        ptcls = []
-        for c, p, v, size, k, j, t in self.particles:
-            p[0] += v[0]
-            p[1] += v[1]
-            v[0] *= k
-            v[1] *= k
-            v[0] += j * random0()
-            v[1] += j * random0()
-            t -= 1
-            if t != 0:
-                ptcls.append((c, p, v, size, k, j, t))
-        self.particles = ptcls
-
-    def start_fading (self, cb):
-        if not self.fading:
-            self.fading = True
-            self.fade_counter = conf.FADE_TIME
-            self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
-            self.fade_cb = cb
-
-    def load_graphics (self):
-        self.imgs = imgs = {}
-        for img in ('void', 'window', 'rect', 'vrect', 'arect', 'player',
-                    'checkpoint-current', 'checkpoint', 'goal') + \
-                   conf.BGS + conf.CLOUDS:
-            imgs[img] = self.game.img(img + '.png')
-        img = imgs['player']
-        imgs['player'] = [img, pg.transform.flip(img, True, False)]
-        self.void_jitter = list(conf.VOID_JITTER)
-        self.window_sfc = pg.Surface(conf.WINDOW_SIZE).convert_alpha()
-
-    def to_screen (self, rect):
-        return [int(round(x)) for x in rect]
-
-    def draw (self, screen):
-        imgs = self.imgs
-        to_screen = self.to_screen
-        # background
-        tile(screen, imgs['void'], (0, 0) + screen.get_size(), self.void_jitter)
-        # vrects
-        img = imgs['vrect']
-        for r in self.all_vrects:
-            tile(screen, img, r)
-        # window
-        w = self.window
-        offset = (-w[0], -w[1])
-        w_sfc = self.window_sfc
-        # window background
-        w_sfc.blit(imgs[self.bg], (0, 0), w)
-        for c, (p, v, s) in zip(conf.CLOUDS, self.clouds):
-            w_sfc.blit(imgs[c], pg.Rect(to_screen(p + [0, 0])).move(offset))
-        # rects in window
-        img = imgs['rect']
-        for r, r_full in zip(self.rects, self.draw_rects):
-            tile(w_sfc, img, pg.Rect(to_screen(r)).move(offset),
-                 full = r_full.move(offset))
-        # window border
-        w_sfc.blit(imgs['window'], (0, 0), None, pg.BLEND_RGBA_MULT)
-        # copy window area to screen
-        screen.blit(w_sfc, w)
-        # arects
-        img = imgs['arect']
-        for r in self.arects:
-            tile(screen, img, to_screen(r))
-        # goal
-        r = pg.Rect(to_screen(self.goal)).move(conf.GOAL_OFFSET)
-        screen.blit(imgs['goal'], r)
-        # checkpoints
-        for i, r in enumerate(self.checkpoints):
-            c = w.clip(to_screen(r))
-            img = imgs['checkpoint' + ('-current' if i == self.current_cp else '')]
-            if c:
-                screen.blit(img, c, c.move(-r[0], -r[1]))
-        # particles
-        for c, p, v, size, k, j, t in self.particles:
-            screen.fill(c, p + [size, size])
-        # fadeout
-        if self.fading:
-            t = conf.FADE_TIME - self.fade_counter
-            alpha = conf.FADE_RATE * float(t) / conf.FADE_TIME
-            alpha = min(255, int(round(alpha)))
-            self.fade_sfc.fill((0, 0, 0, alpha))
-            screen.blit(self.fade_sfc, (0, 0))
-        return True
-
-
-class PlayableLevel (Level):
-    def __init__ (self, game, event_handler, ID = 0, cp = -1):
-        Level.__init__ (self, game, event_handler)
-        # input
-        event_handler.add_event_handlers({
-            pg.KEYDOWN: self.skip,
-            pg.MOUSEBUTTONDOWN: self.skip
-        })
-        event_handler.add_key_handlers([
-            (ks, [(self.move, (i,))], eh.MODE_HELD)
-            for i, ks in enumerate(conf.KEYS_MOVE)
-        ] + [
-            (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1),
-            (conf.KEYS_RESET, self.reset, eh.MODE_ONDOWN),
-            (conf.KEYS_BACK, self.pause, eh.MODE_ONDOWN)
-        ])
-        self.ID = None
-        self.init(ID, cp)
-
-    def init (self, ID = None, cp = None):
-        self.first = True
-        self.paused = False
-        self.dying = False
-        self.winning = False
-        # get level/current checkpoint
-        if ID is None:
-            # same level
-            ID = self.ID
-        if ID != self.ID:
-            # new level
-            self.ID = ID
-            self.current_cp = cp if cp is not None else -1
-            # clouds
-            self.clouds = cs = []
-            w, h = conf.RES
-            imgs = self.imgs
-            vx0 = conf.CLOUD_SPEED
-            vy0 = vx0 * conf.CLOUD_VERT_SPEED_RATIO
-            self.cloud_vel = [vx0 * random0(), vy0 * random0()]
-            vx = conf.CLOUD_MOD_SPEED_RATIO
-            vy = vx * conf.CLOUD_VERT_SPEED_RATIO
-            for c in conf.CLOUDS:
-                c_w, c_h = imgs[c].get_size()
-                s = (c_w, c_h)
-                c_w /= 2
-                c_h /= 2
-                pos = [randint(-c_w, w - c_w), randint(-c_h, h - c_h)]
-                vel = [vx * random0(), vy * random0()]
-                cs.append((pos, vel, s))
-        elif cp is not None:
-            self.current_cp = cp
-        data = conf.LEVELS[ID]
-        # player
-        if self.current_cp >= 0:
-            p = list(data['checkpoints'][self.current_cp][:2])
-            s_p, s_c = conf.PLAYER_SIZE, conf.CHECKPOINT_SIZE
-            for i in (0, 1):
-                p[i] += float(s_c[i] - s_p[i]) / 2
-        else:
-            p = data['player_pos']
-        self.player = Player(self, p)
-        # move window to player
-        pos = pg.Rect(self.to_screen(self.player.rect)).center
-        Level.init(self, data, window_pos = pos)
-
-    def reset (self, *args):
-        if not self.winning:
-            self.init()
-
-    def pause (self, *args):
-        move_channel.pause()
-        self.game.start_backend(ui.Paused)
-        self.paused = True
-
-    def skip (self, evt):
-        if self.dying and self.dying_counter < conf.DIE_SKIP_THRESHOLD and \
-           not (evt.type == pg.KEYDOWN and evt.key in conf.KEYS_BACK) and \
-           not self.winning:
-            self.dying = False
-            self.init()
-
-    def move (self, key, mode, mods, i):
-        if self.ID in conf.CAN_MOVE:
-            self.player.move(i)
-
-    def jump (self, key, mode, mods):
-        if self.ID in conf.CAN_JUMP:
-            self.player.jump(mode == 0)
 
     def handle_collisions (self):
         get_clip = self.get_clip
@@ -501,18 +403,41 @@ class PlayableLevel (Level):
                 dirn = .95 if axes.pop() == 0 else .1
             self.die(dirn)
 
+    def die (self, dirn = .5):
+        self.dying = True
+        self.dying_counter = conf.DIE_TIME
+        # particles
+        pos = list(pg.Rect(self.to_screen(self.player.rect)).center)
+        self.add_ptcls('die', pos, dirn)
+        # sound
+        move_channel.pause()
+        self.game.play_snd('die')
+
     def next_level (self):
         if self.ID == len(conf.LEVELS) - 1:
             self.game.quit_backend()
         else:
             self.init(self.ID + 1)
 
+    def win (self):
+        if self.winning:
+            return
+        move_channel.pause()
+        self.winning = True
+        self.start_fading(self.next_level)
+
     def update (self):
+        # fade counter
+        if self.fading:
+            self.fade_counter -= 1
+            if self.fade_counter == 0:
+                self.fading = False
+                del self.fade_sfc
+                self.fade_cb()
         # move player
         if not self.dying:
-            self.player.update()
-        Level.update(self, False)
-        pl = self.player
+            pl = self.player
+            pl.update()
         # move window
         x0, y0 = self.centre
         if self.paused:
@@ -535,8 +460,39 @@ class PlayableLevel (Level):
                 self.update_rects()
                 if not self.dying:
                     self.handle_collisions()
-        # player velocity
-        pl.update_vel()
+        # clouds
+        if self.clouds:
+            # jitter
+            jx = conf.CLOUD_JITTER
+            jy = jx * conf.CLOUD_VERT_SPEED_RATIO
+            v0 = self.cloud_vel
+            v0[0] += jx * random0()
+            v0[1] += jy * random0()
+            r = conf.RES
+            for p, v, s in self.clouds:
+                for i, (i_w, w) in enumerate(zip(s, r)):
+                    # move
+                    x = p[i]
+                    x += v0[i] + v[i]
+                    # wrap
+                    if x + i_w < 0:
+                        x = w
+                    elif x > w:
+                        x = -i_w
+                    p[i] = x
+        # particles
+        ptcls = []
+        for c, p, v, size, k, j, t in self.particles:
+            p[0] += v[0]
+            p[1] += v[1]
+            v[0] *= k
+            v[1] *= k
+            v[0] += j * random0()
+            v[1] += j * random0()
+            t -= 1
+            if t != 0:
+                ptcls.append((c, p, v, size, k, j, t))
+        self.particles = ptcls
         # death counter
         if self.dying:
             self.dying_counter -= 1
@@ -547,6 +503,8 @@ class PlayableLevel (Level):
             self.handle_collisions()
         if self.vert_dirn == 1:
             pl.on_ground = conf.ON_GROUND_TIME
+        # player velocity
+        pl.update_vel()
         # die if OoB
         if pl.rect[1] > conf.RES[1]:
             self.die()
@@ -562,12 +520,17 @@ class PlayableLevel (Level):
             if get_clip(p, c) and get_clip(w, c):
                 self.current_cp += 1
 
-    def win (self):
-        if self.winning:
-            return
-        move_channel.pause()
-        self.winning = True
-        self.start_fading(self.next_level)
+    def load_graphics (self):
+        self.imgs = imgs = {}
+        for img in ('void', 'window', 'rect', 'vrect', 'arect', 'player',
+                    'checkpoint-current', 'checkpoint', 'goal') + \
+                   conf.BGS + conf.CLOUDS:
+            imgs[img] = self.game.img(img + '.png')
+        self.void_jitter = list(conf.VOID_JITTER)
+        self.window_sfc = pg.Surface(conf.WINDOW_SIZE).convert_alpha()
+
+    def to_screen (self, rect):
+        return [int(round(x)) for x in rect]
 
     def add_ptcls (self, key, pos, dirn = .5):
         particles = self.particles
@@ -591,22 +554,65 @@ class PlayableLevel (Level):
                 if life > 0:
                     particles.append((c, list(pos), v, size, k, j, life))
 
-    def die (self, dirn = .5):
-        self.dying = True
-        self.dying_counter = conf.DIE_TIME
-        # particles
-        pos = list(pg.Rect(self.to_screen(self.player.rect)).center)
-        self.add_ptcls('die', pos, dirn)
-        # sound
-        move_channel.pause()
-        self.game.play_snd('die')
+    def start_fading (self, cb):
+        if not self.fading:
+            self.fading = True
+            self.fade_counter = conf.FADE_TIME
+            self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
+            self.fade_cb = cb
 
     def draw (self, screen):
         self.first = False
-        Level.draw(self, screen)
+        imgs = self.imgs
+        to_screen = self.to_screen
+        # background
+        tile(screen, imgs['void'], (0, 0) + screen.get_size(), self.void_jitter)
+        # vrects
+        img = imgs['vrect']
+        for r in self.all_vrects:
+            tile(screen, img, r)
+        # window
+        w = self.window
+        offset = (-w[0], -w[1])
+        w_sfc = self.window_sfc
+        # window background
+        w_sfc.blit(imgs[self.bg], (0, 0), w)
+        for c, (p, v, s) in zip(conf.CLOUDS, self.clouds):
+            w_sfc.blit(imgs[c], pg.Rect(to_screen(p + [0, 0])).move(offset))
+        # rects in window
+        img = imgs['rect']
+        for r, r_full in zip(self.rects, self.draw_rects):
+            tile(w_sfc, img, pg.Rect(to_screen(r)).move(offset),
+                 full = r_full.move(offset))
+        # window border
+        w_sfc.blit(imgs['window'], (0, 0), None, pg.BLEND_RGBA_MULT)
+        # copy window area to screen
+        screen.blit(w_sfc, w)
+        # arects
+        img = imgs['arect']
+        for r in self.arects:
+            tile(screen, img, to_screen(r))
         # player
         if not self.dying:
             p = self.to_screen(self.player.rect)
-            img = self.imgs['player'][0]
-            screen.blit(img, pg.Rect(p).move(conf.PLAYER_OFFSET))
+            screen.blit(imgs['player'], pg.Rect(p).move(conf.PLAYER_OFFSET))
+        # goal
+        r = pg.Rect(to_screen(self.goal)).move(conf.GOAL_OFFSET)
+        screen.blit(imgs['goal'], r)
+        # checkpoints
+        for i, r in enumerate(self.checkpoints):
+            c = w.clip(to_screen(r))
+            img = imgs['checkpoint' + ('-current' if i == self.current_cp else '')]
+            if c:
+                screen.blit(img, c, c.move(-r[0], -r[1]))
+        # particles
+        for c, p, v, size, k, j, t in self.particles:
+            screen.fill(c, p + [size, size])
+        # fadeout
+        if self.fading:
+            t = conf.FADE_TIME - self.fade_counter
+            alpha = conf.FADE_RATE * float(t) / conf.FADE_TIME
+            alpha = min(255, int(round(alpha)))
+            self.fade_sfc.fill((0, 0, 0, alpha))
+            screen.blit(self.fade_sfc, (0, 0))
         return True

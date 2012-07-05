@@ -10,7 +10,7 @@ MUSIC_DIR = DATA_DIR + 'music' + sep
 
 # display
 WINDOW_ICON = IMG_DIR + 'icon.png'
-WINDOW_TITLE = ''
+WINDOW_TITLE = 'World View of a Slime'
 MOUSE_VISIBLE = False
 FLAGS = 0
 FULLSCREEN = False
@@ -25,7 +25,6 @@ FPS = 60
 FRAME = 1. / FPS
 
 # debug
-DEBUG = False
 DEBUG_INITIAL_LEVEL = 0
 DEBUG_INITIAL_CP = -1
 PROFILE_STATS_FILE = '.profile_stats'
@@ -55,7 +54,7 @@ HIT_VOL_THRESHOLD = 2 # before scaling
 # graphics
 # images
 DEFAULT_BG = 'bg'
-BGS = ('bg', 'title')
+BGS = ('bg', 'bg0')
 NUM_CLOUDS = 4
 CLOUDS = tuple('cloud{0}'.format(i) for i in xrange(NUM_CLOUDS))
 CLOUD_SPEED = .5
@@ -125,19 +124,18 @@ ERR = 10 ** -10
 # levels
 CAN_JUMP = range(8)
 CAN_MOVE = range(12)
-TITLE_LEVEL = {
-    'goal': (700, 390),
-    'rects': [(0, 450, 960, 90)],
-    'bg': 'title'
-}
 LEVELS = [{
-    'player_pos': (472.5, 170),
-    'goal': (477.5, 390),
-    'rects': [(0, 200, 960, 150), (0, 450, 960, 90)]
+    'bg': 'bg0',
+    'player_pos': (100, 0),
+    'goal': (100, 440),
+    'rects': [(0, 300, 960, 100), (0, 500, 960, 40)],
+    'arects': [(0, 55, 850, 5), (110, 185, 960, 5)]
 }, {
     'player_pos': (100, 420),
     'goal': (900, 390),
-    'rects': [(0, 450, 960, 90), (200, 0, 50, 450), (400, 0, 300, 450)]
+    'rects': [(0, 460, 325, 80), (325, 450, 635, 90), (200, 0, 50, 450),
+              (400, 0, 300, 450)],
+    'arects': [(0, 450, 325, 10)]
 }, {
     'player_pos': (100, 420),
     'goal': (900, 390),
@@ -186,7 +184,8 @@ LEVELS = [{
 }, {
     'player_pos': (100, 120),
     'goal': (860, 390),
-    'rects': [(0, 150, 300, 10), (660, 450, 300, 10)]
+    'rects': [(0, 150, 300, 10), (660, 450, 300, 10)],
+    'arects': [(0, 110, 300, 10)]
 }, {
     'player_pos': (100, 220),
     'goal': (50, 80),

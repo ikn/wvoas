@@ -1,9 +1,8 @@
-World View of a Slime (release 1): a 2D puzzle platformer where only a small
-part of the world exists at a time.
+World View of a Slime (release 2-dev): a 2D puzzle platformer where only a
+small part of the world exists at a time.
 
 This was originally made for a 48-hour competition in June 2012, with the theme
 'tiny screen size'; this version is the result of further development.
-
 
     DEPENDENCIES
 
