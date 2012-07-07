@@ -136,7 +136,7 @@ class Player:
 
     def post_draw_update (self):
         self.old_rect = list(self.rect)
-        self.old_rect_img = Rect(self.rect_img)
+        self.old_rect_img = self.rect_img.copy()
 
 
 class Paused:
@@ -261,7 +261,7 @@ class Level:
         x, y = Rect(self.to_screen(self.player.rect)).center
         w, h = conf.HALF_WINDOW_SIZE
         self.window = Rect(x - w, y - h, 2 * w, 2 * h)
-        self.old_window = Rect(self.window)
+        self.old_window = self.window.copy()
         # centre mouse to avoid initial window movement
         pg.mouse.set_pos(self.centre)
         # checkpoints
@@ -438,9 +438,9 @@ class Level:
         if not self.dying:
             pl = self.player
             pl.update()
-        # move window
+        # get amount to move window by
         w = self.window
-        self.old_window = Rect(w)
+        self.old_window = w.copy()
         x0, y0 = self.centre
         if self.paused:
             dx = dy = 0
@@ -449,19 +449,45 @@ class Level:
             x, y = pg.mouse.get_pos()
             dx, dy = x - x0, y - y0
         pg.mouse.set_pos(x0, y0)
-        done = False
-        self.vert_dirn = 3
-        for axis, d in ((0, dx), (1, dy)):
-            dirn = 1 if d > 0 else -1
-            while d * dirn > 0:
-                done = True
-                d -= dirn
-                rel = [0, 0]
-                rel[axis] += dirn
-                w.move_ip(rel)
-                self.update_rects()
-                if not self.dying:
+        wx0, wy0, ww, wh = self.total_window = w.union(w.move(dx, dy))
+        # move window
+        if self.dying:
+            # just move window
+            w.move_ip(dx, dy)
+            self.update_rects()
+        else:
+            self.vert_dirn = 3
+            if dx == dy == 0:
+                # just handle collisions
+                self.handle_collisions()
+            else:
+                # check if player and window intersect
+                wx1, wy1 = wx0 + ww, wy0 + wh
+                r = pl.rect
+                o_r = pl.old_rect
+                px0, py0 = min(r[0], o_r[0]), min(r[1], o_r[1])
+                px1 = max(r[0] + r[2], o_r[0] + o_r[2])
+                py1 = max(r[1] + r[3], o_r[1] + o_r[3])
+                if px1 > wx0 and py1 > wy0 and px0 < wx1 and py0 < wy1:
+                    # if so, move window a few pixels at a time
+                    c = conf.WINDOW_MOVE_AMOUNT
+                    for axis, d in ((0, dx), (1, dy)):
+                        dirn = 1 if d > 0 else -1
+                        while d * dirn > 0:
+                            d -= dirn * c
+                            rel = [0, 0]
+                            rel[axis] += c * dirn + (0 if d * dirn > 0 else d)
+                            w.move_ip(rel)
+                            self.update_rects()
+                            if not self.dying:
+                                self.handle_collisions()
+                else:
+                    # else move it the whole way
+                    w.move_ip(dx, dy)
+                    self.update_rects()
                     self.handle_collisions()
+            if self.vert_dirn == 1:
+                pl.on_ground = conf.ON_GROUND_TIME
         # clouds
         if self.clouds:
             # jitter
@@ -533,14 +559,10 @@ class Level:
             if self.dying_counter == 0:
                 self.init()
             return
-        if not done:
-            self.handle_collisions()
-        if self.vert_dirn == 1:
-            pl.on_ground = conf.ON_GROUND_TIME
         # player velocity
         pl.update_vel()
         # die if OoB
-        if pl.rect[1] +30> conf.RES[1]:
+        if pl.rect[1] > conf.RES[1]:
             self.die()
         # win if at goal
         p = pl.rect
@@ -625,7 +647,7 @@ class Level:
         if draw_all:
             tile(screen, img, (0, 0) + screen.get_size(), ox, oy)
         else:
-            draw_rects = self.particle_rects + [w.union(self.old_window), self.goal_img]
+            draw_rects = self.particle_rects + [self.total_window, self.goal_img]
             if self.first_dying or not self.dying:
                 draw_rects.append(pl.rect_img.union(pl.old_rect_img))
             for r in draw_rects:
