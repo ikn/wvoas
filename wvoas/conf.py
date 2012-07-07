@@ -51,7 +51,7 @@ SOUNDS = {'hit': 10, 'die': 4}
 SOUND_VOLUMES = {'hit': 1. / 13, 'die': 2, 'move': .5}
 HIT_VOL_THRESHOLD = 2 # before scaling
 
-# gameplay
+# gameplay (sizes must be ints)
 PLAYER_SIZE = (15, 30)
 PLAYER_SPEED = 1
 PLAYER_AIR_SPEED = .2
@@ -75,6 +75,7 @@ ERR = 10 ** -10
 # levels
 CAN_JUMP = range(8)
 CAN_MOVE = range(12)
+# all positions must be ints
 LEVELS = [{
     'bgs': ('bg', ('bg0', (154, 75))),
     'player_pos': (100, 25),
@@ -147,13 +148,13 @@ LEVELS = [{
 },
     # can't move
 {
-    'player_pos': (372.5, 170),
-    'goal': (577.5, 390),
+    'player_pos': (370, 170),
+    'goal': (580, 390),
     'rects': [(0, 200, 960, 150), (0, 450, 960, 60)],
     'arects': [(0, 510, 960, 30)]
 }, {
-    'player_pos': (372.5, 170),
-    'goal': (577.5, 390),
+    'player_pos': (370, 170),
+    'goal': (580, 390),
     'rects': [(0, 200, 960, 150), (0, 450, 960, 90)]
 }, {
     'player_pos': (100, 420),
@@ -182,7 +183,9 @@ CLOUD_MOD_SPEED_RATIO = .2
 CLOUD_JITTER = .01
 PLAYER_OFFSET = (-2, -2)
 GOAL_OFFSET = (-17, -2)
-VOID_JITTER = (10, 10, 5)
+VOID_JITTER_X = 10
+VOID_JITTER_Y = 10
+VOID_JITTER_T = 5
 # fades
 FADE_TIME = 120
 FADE_RATE = 300 # rate * time_ratio = 255 * alpha

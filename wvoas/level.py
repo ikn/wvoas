@@ -2,6 +2,7 @@ from math import cos, sin, pi
 from random import randint, random, expovariate, shuffle
 
 import pygame as pg
+from pygame import Rect
 from ext import evthandler as eh
 
 import conf
@@ -18,24 +19,7 @@ c.play(snd, -1)
 c.pause()
 c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
 
-def tile (screen, img, rect, jitter = None, full = None):
-    # get/update jitter
-    if jitter is None:
-        ox = oy = 0
-    else:
-        if len(jitter) == 3:
-            jx, jy, t0 = jitter
-            t = t0
-            ox, oy = randint(0, jx), randint(0, jy)
-            jitter += [ox, oy, t]
-        else:
-            jx, jy, t0, ox, oy, t = jitter
-            if t == 0:
-                ox, oy = randint(0, jx), randint(0, jy)
-                jitter[3] = ox
-                jitter[4] = oy
-                jitter[5] = t0
-        jitter[5] -= 1
+def tile (screen, img, rect, ox = 0, oy = 0, full = None):
     # get offset
     if full is not None:
         ox += rect[0] - full[0]
@@ -62,8 +46,10 @@ def tile (screen, img, rect, jitter = None, full = None):
 class Player:
     def __init__ (self, level, pos):
         self.level = level
+        self.img_size = level.game.img('player.png').get_size()
         self.rect = list(pos) + list(conf.PLAYER_SIZE)
-        self.old_rect = list(self.rect)
+        self.update_img_rect()
+        self.post_draw_update()
         self.vel = [0, 0]
         self.on_ground = 0
         self.jumping = 0
@@ -81,7 +67,7 @@ class Player:
         self.vel[0] += (1 if dirn else -1) * speed
         if self.on_ground:
             if self.on_ground:
-                pos = pg.Rect(self.level.to_screen(self.rect)).midbottom
+                pos = Rect(self.level.to_screen(self.rect)).midbottom
                 self.level.add_ptcls('move', pos)
 
     def jump (self, press):
@@ -92,7 +78,7 @@ class Player:
                 self.vel[1] -= dv
                 self.jumping = conf.JUMP_TIME
                 self.on_ground = 0
-                pos = pg.Rect(self.level.to_screen(self.rect)).midbottom
+                pos = Rect(self.level.to_screen(self.rect)).midbottom
                 self.level.add_ptcls('jump', pos)
         elif self.jumping:
             self.jumped = True
@@ -126,21 +112,31 @@ class Player:
         if self.jumped:
             vy -= conf.CONTINUE_JUMP
         self.jumped = False
-        # update things
+        # move
         self.vel = [vx, vy]
         self.rect[0] += vx
         self.rect[1] += vy
+        self.update_img_rect()
+        # set if on ground
         if self.on_ground:
             self.on_ground -= 1
         if self.jumping:
             self.jumping -= 1
+
+    def update_img_rect (self):
+        ox, oy = conf.PLAYER_OFFSET
+        p = (int(round(self.rect[0])) + ox, int(round(self.rect[1])) + oy)
+        self.rect_img = Rect(p, self.img_size)
 
     def update_vel (self):
         o, r, v = self.old_rect, self.rect, self.vel
         d = conf.LAUNCH_SPEED
         v[0] += d * (r[0] - o[0] - v[0])
         v[1] += d * (r[1] - o[1] - v[1])
-        self.old_rect = list(r)
+
+    def post_draw_update (self):
+        self.old_rect = list(self.rect)
+        self.old_rect_img = Rect(self.rect_img)
 
 
 class Paused:
@@ -219,6 +215,7 @@ class Level:
         self.winning = False
         self.fading = False
         self.particles = []
+        self.particle_rects = []
         # get level/current checkpoint
         if ID is None:
             # same level
@@ -259,20 +256,23 @@ class Level:
             p = data['player_pos']
         self.player = Player(self, p)
         # window
-        x, y = pg.Rect(self.to_screen(self.player.rect)).center
+        x, y = Rect(self.to_screen(self.player.rect)).center
         w, h = conf.HALF_WINDOW_SIZE
-        self.window = pg.Rect(x - w, y - h, 2 * w, 2 * h)
+        self.window = Rect(x - w, y - h, 2 * w, 2 * h)
+        self.old_window = Rect(self.window)
         # centre mouse to avoid initial window movement
         pg.mouse.set_pos(self.centre)
         # checkpoints
         s = conf.CHECKPOINT_SIZE
-        self.checkpoints = [p + s for p in data.get('checkpoints', [])]
+        self.checkpoints = [Rect(p + s) for p in data.get('checkpoints', [])]
         # goal
-        self.goal = data['goal'] + conf.GOAL_SIZE
+        self.goal = Rect(data['goal'] + conf.GOAL_SIZE)
+        self.goal_img = self.goal.move(conf.GOAL_OFFSET)
+        self.goal_img.size = self.imgs['goal'].get_size()
         # rects
-        self.all_rects = data['rects']
-        self.all_vrects = data.get('vrects', [])
-        self.arects = data.get('arects', [])
+        self.all_rects = [Rect(r) for r in data['rects']]
+        self.all_vrects = [Rect(r) for r in data.get('vrects', [])]
+        self.arects = [Rect(r) for r in data.get('arects', [])]
         self.update_rects()
 
     def skip (self, evt):
@@ -320,7 +320,7 @@ class Level:
                         r[i] = wp1[i]
                         r[i + 2] = s[i] - wp1[i]
                 if r[2] > 0 and r[3] > 0:
-                    rs.append(r)
+                    rs.append(Rect(r))
 
     def get_clip (self, r1, r2, err = 0):
         x01, y01, w, h = r1
@@ -335,23 +335,21 @@ class Level:
 
     def update_rects (self):
         self.update_window()
-        get_clip = self.get_clip
-        to_screen = self.to_screen
         # rects
         self.rects = rects = []
         self.draw_rects = draw = []
-        w = list(self.window)
+        w = self.window
         for r in self.all_rects:
-            c = get_clip(r, w)
+            c = w.clip(r)
             if c:
                 rects.append(c)
-                draw.append(pg.Rect(to_screen(r)))
+                draw.append(r)
         # vrects
         self.vrects = rects = []
         ws = self.inverse_win
         for r in self.all_vrects:
             for w in ws:
-                c = get_clip(r, w)
+                c = w.clip(r)
                 if c:
                     rects.append(c)
 
@@ -407,7 +405,7 @@ class Level:
         self.dying = True
         self.dying_counter = conf.DIE_TIME
         # particles
-        pos = list(pg.Rect(self.to_screen(self.player.rect)).center)
+        pos = list(Rect(self.to_screen(self.player.rect)).center)
         self.add_ptcls('die', pos, dirn)
         # sound
         move_channel.pause()
@@ -439,6 +437,8 @@ class Level:
             pl = self.player
             pl.update()
         # move window
+        w = self.window
+        self.old_window = Rect(w)
         x0, y0 = self.centre
         if self.paused:
             dx = dy = 0
@@ -456,7 +456,7 @@ class Level:
                 d -= dirn
                 rel = [0, 0]
                 rel[axis] += dirn
-                self.window.move_ip(rel)
+                w.move_ip(rel)
                 self.update_rects()
                 if not self.dying:
                     self.handle_collisions()
@@ -470,29 +470,51 @@ class Level:
             v0[1] += jy * random0()
             r = conf.RES
             for p, v, s in self.clouds:
-                for i, (i_w, w) in enumerate(zip(s, r)):
+                for i, (i_w, r_w) in enumerate(zip(s, r)):
                     # move
                     x = p[i]
                     x += v0[i] + v[i]
                     # wrap
                     if x + i_w < 0:
-                        x = w
-                    elif x > w:
+                        x = r_w
+                    elif x > r_w:
                         x = -i_w
                     p[i] = x
         # particles
         ptcls = []
-        for c, p, v, size, k, j, t in self.particles:
-            p[0] += v[0]
-            p[1] += v[1]
-            v[0] *= k
-            v[1] *= k
-            v[0] += j * random0()
-            v[1] += j * random0()
-            t -= 1
-            if t != 0:
-                ptcls.append((c, p, v, size, k, j, t))
+        rects = []
+        for k, j, group in self.particles:
+            g = []
+            x0, y0 = conf.RES
+            x1 = y1 = 0
+            for c, p, v, size, t in group:
+                t -= 1
+                if t != 0:
+                    # move
+                    x, y = p
+                    vx, vy = v
+                    x += vx
+                    y += vy
+                    # update boundary
+                    if x < x0:
+                        x0 = x
+                    if y < y0:
+                        y0 = y
+                    if x + size > x1:
+                        x1 = x + size
+                    if y + size > y1:
+                        y1 = y + size
+                    # damp/jitter
+                    vx *= k
+                    vy *= k
+                    vx += j * random0()
+                    vy += j * random0()
+                    g.append((c, (x, y), (vx, vy), size, t))
+            if g:
+                ptcls.append((k, j, g))
+                rects.append(self.to_screen((x0, y0, x1 - x0, y1 - y0)))
         self.particles = ptcls
+        self.particle_rects = rects
         # death counter
         if self.dying:
             self.dying_counter -= 1
@@ -509,15 +531,13 @@ class Level:
         if pl.rect[1] > conf.RES[1]:
             self.die()
         # win if at goal
-        get_clip = self.get_clip
-        w = self.window
         p = pl.rect
-        c = get_clip(p, self.goal)
-        if c and get_clip(w, c):
+        c = w.clip(self.goal)
+        if c and self.get_clip(p, c):
             self.win()
         # check if at checkpoints
         for c in self.checkpoints[self.current_cp + 1:]:
-            if get_clip(p, c) and get_clip(w, c):
+            if w.clip(c) and self.get_clip(p, c):
                 self.current_cp += 1
 
     def load_graphics (self):
@@ -526,14 +546,14 @@ class Level:
                     'checkpoint-current', 'checkpoint', 'goal') + \
                    conf.BGS + conf.CLOUDS:
             imgs[img] = self.game.img(img + '.png')
-        self.void_jitter = list(conf.VOID_JITTER)
+        self.void_jitter = [conf.VOID_JITTER_X, conf.VOID_JITTER_Y, conf.VOID_JITTER_T]
         self.window_sfc = pg.Surface(conf.WINDOW_SIZE).convert_alpha()
 
     def to_screen (self, rect):
         return [int(round(x)) for x in rect]
 
     def add_ptcls (self, key, pos, dirn = .5):
-        particles = self.particles
+        particles = []
         data = conf.PARTICLES[key]
         max_speed = data['speed']
         max_size = data['size']
@@ -549,10 +569,11 @@ class Level:
                 amount -= size
                 angle = random() * 2 * pi
                 speed = max_speed * expovariate(5)
-                v = [speed * cos(dirn) * cos(angle), speed * sin(dirn) * sin(angle)]
+                v = (speed * cos(dirn) * cos(angle), speed * sin(dirn) * sin(angle))
                 life = int(random() * max_life)
                 if life > 0:
-                    particles.append((c, list(pos), v, size, k, j, life))
+                    particles.append((c, tuple(pos), v, size, life))
+        self.particles.append((k, j, particles))
 
     def start_fading (self, cb):
         if not self.fading:
@@ -561,21 +582,47 @@ class Level:
             self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
             self.fade_cb = cb
 
+    def update_jitter (self, jitter):
+        if len(jitter) == 3:
+            jx, jy, t0 = jitter
+            t = t0
+            ox, oy = randint(0, jx), randint(0, jy)
+            jitter += [ox, oy, t]
+        else:
+            jx, jy, t0, ox, oy, t = jitter
+            if t == 0:
+                ox, oy = randint(0, jx), randint(0, jy)
+                jitter[3] = ox
+                jitter[4] = oy
+                jitter[5] = t0
+        jitter[5] -= 1
+
     def draw (self, screen):
-        # HACK
+        # HACK: don't draw on last frame
         if self.winning and not self.fading and self.ID == len(conf.LEVELS) - 1:
             return False
         self.first = False
         imgs = self.imgs
-        to_screen = self.to_screen
+        w = self.window
+        pl = self.player
         # background
-        tile(screen, imgs['void'], (0, 0) + screen.get_size(), self.void_jitter)
+        jitter = self.void_jitter
+        self.update_jitter(jitter)
+        ox, oy = jitter[3], jitter[4]
+        img = imgs['void']
+        if jitter[5] == conf.VOID_JITTER_T - 1 or self.fading:
+            tile(screen, img, (0, 0) + screen.get_size(), ox, oy)
+        else:
+            rects = self.particle_rects + [w.union(self.old_window), self.goal_img]
+            if not self.dying:
+                rects.append(pl.rect_img.union(pl.old_rect_img))
+            for r in rects:
+                tile(screen, img, r, ox, oy)
         # vrects
         img = imgs['vrect']
         for r in self.all_vrects:
             tile(screen, img, r)
         # window
-        w = self.window
         offset = (-w[0], -w[1])
         w_sfc = self.window_sfc
         # window background: static images
@@ -584,15 +631,18 @@ class Level:
                 pos = (0, 0)
             else:
                 img, pos = img
-            w_sfc.blit(imgs[img], pg.Rect(pos + (0, 0)).move(offset))
+            w_sfc.blit(imgs[img], Rect(pos + (0, 0)).move(offset))
         # clouds
         for c, (p, v, s) in zip(conf.CLOUDS, self.clouds):
-            w_sfc.blit(imgs[c], pg.Rect(to_screen(p + [0, 0])).move(offset))
+            w_sfc.blit(imgs[c], Rect(self.to_screen(p + [0, 0])).move(offset))
         # rects in window
         img = imgs['rect']
         for r, r_full in zip(self.rects, self.draw_rects):
-            tile(w_sfc, img, pg.Rect(to_screen(r)).move(offset),
-                 full = r_full.move(offset))
+            tile(w_sfc, img, r.move(offset), full = r_full.move(offset))
+        # checkpoints
+        for i, r in enumerate(self.checkpoints):
+            img = imgs['checkpoint' + ('-current' if i == self.current_cp else '')]
+            w_sfc.blit(img, r.move(offset))
         # window border
         w_sfc.blit(imgs['window'], (0, 0), None, pg.BLEND_RGBA_MULT)
         # copy window area to screen
@@ -600,23 +650,17 @@ class Level:
         # arects
         img = imgs['arect']
         for r in self.arects:
-            tile(screen, img, to_screen(r))
+            tile(screen, img, r)
         # goal
-        r = pg.Rect(to_screen(self.goal)).move(conf.GOAL_OFFSET)
-        screen.blit(imgs['goal'], r)
-        # checkpoints
-        for i, r in enumerate(self.checkpoints):
-            c = w.clip(to_screen(r))
-            img = imgs['checkpoint' + ('-current' if i == self.current_cp else '')]
-            if c:
-                screen.blit(img, c, c.move(-r[0], -r[1]))
+        screen.blit(imgs['goal'], self.goal_img)
         # player
         if not self.dying:
-            p = self.to_screen(self.player.rect)
-            screen.blit(imgs['player'], pg.Rect(p).move(conf.PLAYER_OFFSET))
+            screen.blit(imgs['player'], pl.rect_img)
+        pl.post_draw_update()
         # particles
-        for c, p, v, size, k, j, t in self.particles:
-            screen.fill(c, p + [size, size])
+        for k, j, g in self.particles:
+            for c, p, v, size, t in g:
+                screen.fill(c, p + (size, size))
         # fadeout
         if self.fading:
             t = conf.FADE_TIME - self.fade_counter
