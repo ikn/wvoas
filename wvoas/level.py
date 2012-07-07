@@ -1,4 +1,4 @@
-from math import cos, sin, pi
+from math import cos, sin, pi, ceil
 from random import randint, random, expovariate, shuffle
 
 import pygame as pg
@@ -212,10 +212,12 @@ class Level:
         self.first = True
         self.paused = False
         self.dying = False
+        self.first_dying = False
         self.winning = False
         self.fading = False
         self.particles = []
         self.particle_rects = []
+        self.void_jitter = [conf.VOID_JITTER_X, conf.VOID_JITTER_Y, conf.VOID_JITTER_T]
         # get level/current checkpoint
         if ID is None:
             # same level
@@ -279,7 +281,6 @@ class Level:
         if self.dying and self.dying_counter < conf.DIE_SKIP_THRESHOLD and \
            not (evt.type == pg.KEYDOWN and evt.key in conf.KEYS_BACK) and \
            not self.winning:
-            self.dying = False
             self.init()
 
     def pause (self, *args):
@@ -402,6 +403,7 @@ class Level:
             self.die(dirn)
 
     def die (self, dirn = .5):
+        self.first_dying = True
         self.dying = True
         self.dying_counter = conf.DIE_TIME
         # particles
@@ -488,10 +490,19 @@ class Level:
             x0, y0 = conf.RES
             x1 = y1 = 0
             for c, p, v, size, t in group:
+                x, y = p
+                # update boundary
+                if x < x0:
+                    x0 = x
+                if y < y0:
+                    y0 = y
+                if x + size > x1:
+                    x1 = x + size
+                if y + size > y1:
+                    y1 = y + size
                 t -= 1
                 if t != 0:
                     # move
-                    x, y = p
                     vx, vy = v
                     x += vx
                     y += vy
@@ -512,7 +523,8 @@ class Level:
                     g.append((c, (x, y), (vx, vy), size, t))
             if g:
                 ptcls.append((k, j, g))
-                rects.append(self.to_screen((x0, y0, x1 - x0, y1 - y0)))
+            if x1 > x0 and y1 > y0:
+                rects.append((int(x0), int(y0), ceil(x1 - x0), ceil(y1 - y0)))
         self.particles = ptcls
         self.particle_rects = rects
         # death counter
@@ -528,7 +540,7 @@ class Level:
         # player velocity
         pl.update_vel()
         # die if OoB
-        if pl.rect[1] > conf.RES[1]:
+        if pl.rect[1] +30> conf.RES[1]:
             self.die()
         # win if at goal
         p = pl.rect
@@ -546,7 +558,6 @@ class Level:
                     'checkpoint-current', 'checkpoint', 'goal') + \
                    conf.BGS + conf.CLOUDS:
             imgs[img] = self.game.img(img + '.png')
-        self.void_jitter = [conf.VOID_JITTER_X, conf.VOID_JITTER_Y, conf.VOID_JITTER_T]
         self.window_sfc = pg.Surface(conf.WINDOW_SIZE).convert_alpha()
 
     def to_screen (self, rect):
@@ -610,14 +621,15 @@ class Level:
         self.update_jitter(jitter)
         ox, oy = jitter[3], jitter[4]
         img = imgs['void']
-        if jitter[5] == conf.VOID_JITTER_T - 1 or self.fading:
+        draw_all = jitter[5] == conf.VOID_JITTER_T - 1 or self.fading
+        if draw_all:
             tile(screen, img, (0, 0) + screen.get_size(), ox, oy)
         else:
-            rects = self.particle_rects + [w.union(self.old_window), self.goal_img]
-            if not self.dying:
-                rects.append(pl.rect_img.union(pl.old_rect_img))
-            for r in rects:
-                tile(screen, img, r, ox, oy)
+            draw_rects = self.particle_rects + [w.union(self.old_window), self.goal_img]
+            if self.first_dying or not self.dying:
+                draw_rects.append(pl.rect_img.union(pl.old_rect_img))
+            for r in draw_rects:
+                tile(screen, img, r, ox, oy, (0, 0))
         # vrects
         img = imgs['vrect']
         for r in self.all_vrects:
@@ -668,4 +680,10 @@ class Level:
             alpha = min(255, int(round(alpha)))
             self.fade_sfc.fill((0, 0, 0, alpha))
             screen.blit(self.fade_sfc, (0, 0))
-        return True
+            draw_all = True
+        if self.first_dying:
+            self.first_dying = False
+        if draw_all:
+            return True
+        else:
+            return draw_rects + self.arects
