@@ -46,7 +46,8 @@ def tile (screen, img, rect, ox = 0, oy = 0, full = None):
 class Player:
     def __init__ (self, level, pos):
         self.level = level
-        self.img_size = level.game.img('player.png').get_size()
+        w, h = level.game.img('player.png').get_size()
+        self.img_size = (w / (conf.PLAYER_MAX_SKEW + 1), h / 2)
         self.rect = list(pos) + list(conf.PLAYER_SIZE)
         self.update_img_rect()
         self.post_draw_update()
@@ -57,18 +58,18 @@ class Player:
         self.moving = False
         self.moved = False
         move_channel.pause()
+        self.img = level.game.img('player.png')
+        self.skew_v = 0
+        self.skew = 0
 
     def move (self, dirn):
         if not self.moving:
             move_channel.unpause()
             self.moving = True
-        self.moved = True
+        dirn = 1 if dirn else -1
+        self.moved = dirn
         speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
-        self.vel[0] += (1 if dirn else -1) * speed
-        if self.on_ground:
-            if self.on_ground:
-                pos = Rect(self.level.to_screen(self.rect)).midbottom
-                self.level.add_ptcls('move', pos)
+        self.vel[0] += dirn * speed
 
     def jump (self, press):
         if press:
@@ -91,11 +92,21 @@ class Player:
             self.level.game.play_snd('hit', vol)
 
     def update (self):
-        if self.moving and not self.moved:
-            self.moving = False
-            move_channel.pause()
-        self.moved = False
+        skew_v = self.skew_v
         vx, vy = self.vel
+        if self.moving:
+            if self.moved:
+                # if actually moving (not against a wall),
+                if self.on_ground and abs(vx) > 1 and (vx > 0) == (self.moved > 0):
+                    # skew
+                    skew_v -= self.moved
+                    # particles
+                    pos = Rect(self.level.to_screen(self.rect)).midbottom
+                    self.level.add_ptcls('move', pos)
+            else:
+                self.moving = False
+                move_channel.pause()
+        self.moved = False
         # gravity
         vy += conf.GRAV
         # friction
@@ -122,6 +133,11 @@ class Player:
             self.on_ground -= 1
         if self.jumping:
             self.jumping -= 1
+        # elasticity
+        skew_v *= conf.PLAYER_ELAST
+        skew_v -= conf.PLAYER_STIFFNESS * self.skew
+        self.skew += skew_v
+        self.skew_v = skew_v
 
     def update_img_rect (self):
         ox, oy = conf.PLAYER_OFFSET
@@ -138,6 +154,13 @@ class Player:
         self.old_rect = list(self.rect)
         self.old_rect_img = self.rect_img.copy()
 
+    def draw (self, screen):
+        #print self.skew_v, self.skew
+        skew = int(round(self.skew))
+        skew = (1 if skew > 0 else -1) * min(abs(skew), conf.PLAYER_MAX_SKEW)
+        x, y, w, h = self.rect_img
+        screen.blit(self.img, (x, y), (w * abs(skew), h if skew > 0 else 0, w, h))
+        self.post_draw_update()
 
 class Paused:
     def __init__ (self, game, event_handler):
@@ -576,7 +599,7 @@ class Level:
 
     def load_graphics (self):
         self.imgs = imgs = {}
-        for img in ('void', 'window', 'rect', 'vrect', 'arect', 'player',
+        for img in ('void', 'window', 'rect', 'vrect', 'arect',
                     'checkpoint-current', 'checkpoint', 'goal') + \
                    conf.BGS + conf.CLOUDS:
             imgs[img] = self.game.img(img + '.png')
@@ -689,8 +712,7 @@ class Level:
         screen.blit(imgs['goal'], self.goal_img)
         # player
         if not self.dying:
-            screen.blit(imgs['player'], pl.rect_img)
-        pl.post_draw_update()
+            pl.draw(screen)
         # particles
         for k, j, g in self.particles:
             for c, p, v, size, t in g:
