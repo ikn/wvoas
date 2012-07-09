@@ -25,7 +25,7 @@ FPS = 60
 FRAME = 1. / FPS
 
 # debug
-DEBUG_INITIAL_LEVEL = 12
+DEBUG_INITIAL_LEVEL = 0
 DEBUG_INITIAL_CP = -1
 PROFILE_STATS_FILE = '.profile_stats'
 DEFAULT_PROFILE_TIME = 5
@@ -224,6 +224,15 @@ PARTICLES = {
                     ((36, 130, 36), 5), ((25, 91, 25), 2),
                     ((47, 169, 47), 2)),
         'speed': 5,
+        'life': 90,
+        'size': 4,
+        'damping': .98,
+        'jitter': 0
+    }, 'fail_jump': {
+        'colours': (((10, 10, 10), 2), ((30, 30, 30), 1),
+                    ((36, 130, 36), .5), ((25, 91, 25), .2),
+                    ((47, 169, 47), .2)),
+        'speed': 3,
         'life': 90,
         'size': 4,
         'damping': .98,

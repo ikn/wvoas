@@ -96,15 +96,14 @@ class Player:
 
     def jump (self, press):
         if press:
-            if not self.can_jump:
-                self.impact(1, dv = -conf.FAIL_JUMP)
-                self.on_ground = 0
-            elif self.on_ground and not self.jumping:
-                self.impact(1, dv = -conf.INITIAL_JUMP)
-                self.jumping = conf.JUMP_TIME
+            if self.on_ground and not self.jumping:
+                can_jump = self.can_jump
+                self.impact(1, dv = -(conf.INITIAL_JUMP if can_jump else conf.FAIL_JUMP))
+                if can_jump:
+                    self.jumping = conf.JUMP_TIME
                 self.on_ground = 0
                 pos = Rect(self.level.to_screen(self.rect)).midbottom
-                self.level.add_ptcls('jump', pos)
+                self.level.add_ptcls('jump' if can_jump else 'fail_jump', pos)
         elif self.jumping:
             self.jumped = True
 
