@@ -49,8 +49,10 @@ class Player:
         w, h = level.game.img('player.png').get_size()
         self.img_size = (w / (conf.PLAYER_MAX_SKEW + 1), h / 2)
         self.rect = list(pos) + list(conf.PLAYER_SIZE)
-        self.update_img_rect()
-        self.post_draw_update()
+        self.old_rect = list(self.rect)
+        ox, oy = conf.PLAYER_OFFSET
+        p = (ir(self.rect[0]) + ox, ir(self.rect[1]) + oy)
+        self.old_rect_img = self.rect_img = Rect(p, self.img_size)
         self.vel = [0, 0]
         self.on_ground = 0
         self.can_jump = level.ID in conf.CAN_JUMP
@@ -66,6 +68,7 @@ class Player:
         self.skew = 0
         self.squash_v = [0, 0, 0, 0]
         self.squash = [0, 0, 0, 0]
+        self.last_scale = None
 
     def impact (self, axis, v = None, dv = None):
         if dv is None:
@@ -138,9 +141,9 @@ class Player:
         self.jumped = False
         # move
         self.vel = [vx, vy]
-        self.rect[0] += vx
-        self.rect[1] += vy
-        self.update_img_rect()
+        r = self.rect
+        r[0] += vx
+        r[1] += vy
         # set if on ground
         if self.on_ground:
             self.on_ground -= 1
@@ -161,29 +164,15 @@ class Player:
             squash_v[i] -= k * squash[i]
             squash[i] += squash_v[i]
 
-    def update_img_rect (self):
+        # draw stuff
         ox, oy = conf.PLAYER_OFFSET
-        p = (ir(self.rect[0]) + ox, ir(self.rect[1]) + oy)
-        self.rect_img = Rect(p, self.img_size)
-
-    def update_vel (self):
-        o, r, v = self.old_rect, self.rect, self.vel
-        d = conf.LAUNCH_SPEED
-        # TODO: also use .impact() here?
-        v[0] += d * (r[0] - o[0] - v[0])
-        v[1] += d * (r[1] - o[1] - v[1])
-
-    def post_draw_update (self):
-        self.old_rect = list(self.rect)
-        self.old_rect_img = self.rect_img.copy()
-
-    def draw (self, screen):
+        x, y = (ir(r[0]) + ox, ir(r[1]) + oy)
+        w0, h0 = self.img_size
         # copy image to use to sfc
         skew = ir(self.skew)
         skew = (1 if skew > 0 else -1) * min(abs(skew), conf.PLAYER_MAX_SKEW)
         sfc = self.sfc
         sfc.fill((0, 0, 0, 0))
-        x, y, w0, h0 = self.rect_img
         sfc.blit(self.img, (0, 0), (w0 * abs(skew), h0 if skew > 0 else 0, w0, h0))
         # scale
         x0, y0, x1, y1 = self.squash
@@ -193,7 +182,6 @@ class Player:
         mn, mx = conf.PLAYER_MIN_SQUASH, conf.PLAYER_MAX_SQUASH
         wb = min(max(w, mn * w0), mx * w0)
         hb = min(max(h, mn * h0), mx * h0)
-        sfc = pg.transform.smoothscale(sfc, (ir(wb), ir(hb)))
         # adjust blit location if constrained
         if wb != w:
             assert x0 + x1 != 0
@@ -201,9 +189,25 @@ class Player:
         if hb != h:
             assert y0 + y1 != 0
             y0 -= (hb - h) * y0 / (y0 + y1)
-        # blit to screen
-        screen.blit(sfc, (x + ir(x0), y + ir(y0)))
-        self.post_draw_update()
+        self.rect_img = pg.Rect(x + ir(x0), y + ir(y0), ir(wb), ir(hb))
+
+    def update_vel (self):
+        o, r, v = self.old_rect, self.rect, self.vel
+        d = conf.LAUNCH_SPEED
+        # TODO: also use .impact() here?
+        v[0] += d * (r[0] - o[0] - v[0])
+        v[1] += d * (r[1] - o[1] - v[1])
+
+    def draw (self, screen):
+        x, y, w, h = self.rect_img
+        if self.last_scale == (w, h):
+            sfc = self.last_sfc
+        else:
+            self.last_scale = (w, h)
+            self.last_sfc = sfc = pg.transform.smoothscale(self.sfc, (w, h))
+        screen.blit(sfc, (x, y))
+        self.old_rect = list(self.rect)
+        self.old_rect_img = self.rect_img
 
 class Paused:
     def __init__ (self, game, event_handler):

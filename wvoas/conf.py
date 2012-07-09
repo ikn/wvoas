@@ -194,7 +194,7 @@ PLAYER_MAX_SKEW = 4
 GOAL_OFFSET = (-17, -2)
 VOID_JITTER_X = 10
 VOID_JITTER_Y = 10
-VOID_JITTER_T = 1
+VOID_JITTER_T = 5
 # fades
 FADE_TIME = 120
 FADE_RATE = 300 # rate * time_ratio = 255 * alpha
