@@ -66,6 +66,7 @@ class Player:
         self.sfc = pg.Surface(self.img_size).convert_alpha()
         self.skew_v = 0
         self.skew = 0
+        self.last_skew = None
         self.squash_v = [0, 0, 0, 0]
         self.squash = [0, 0, 0, 0]
         self.last_scale = None
@@ -172,8 +173,11 @@ class Player:
         skew = ir(self.skew)
         skew = (1 if skew > 0 else -1) * min(abs(skew), conf.PLAYER_MAX_SKEW)
         sfc = self.sfc
-        sfc.fill((0, 0, 0, 0))
-        sfc.blit(self.img, (0, 0), (w0 * abs(skew), h0 if skew > 0 else 0, w0, h0))
+        if skew != self.last_skew:
+            sfc.fill((0, 0, 0, 0))
+            sfc.blit(self.img, (0, 0), (w0 * abs(skew), h0 if skew > 0 else 0, w0, h0))
+            self.last_scale = None
+            self.last_skew = skew
         # scale
         x0, y0, x1, y1 = self.squash
         w = w0 - x0 - x1
@@ -194,7 +198,6 @@ class Player:
     def update_vel (self):
         o, r, v = self.old_rect, self.rect, self.vel
         d = conf.LAUNCH_SPEED
-        # TODO: also use .impact() here?
         v[0] += d * (r[0] - o[0] - v[0])
         v[1] += d * (r[1] - o[1] - v[1])
 
