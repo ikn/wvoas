@@ -25,7 +25,7 @@ FPS = 60
 FRAME = 1. / FPS
 
 # debug
-DEBUG_INITIAL_LEVEL = 0
+DEBUG_INITIAL_LEVEL = 12
 DEBUG_INITIAL_CP = -1
 PROFILE_STATS_FILE = '.profile_stats'
 DEFAULT_PROFILE_TIME = 5
@@ -58,6 +58,7 @@ PLAYER_AIR_SPEED = .2
 LAUNCH_SPEED = .5
 INITIAL_JUMP = 5
 CONTINUE_JUMP = .7
+FAIL_JUMP = 2
 JUMP_TIME = 10
 ON_GROUND_TIME = 2
 DIE_TIME = 120
@@ -143,7 +144,7 @@ LEVELS = [{
     'player_pos': (100, 220),
     'goal': (50, 80),
     'checkpoints': [(615, 80)],
-    'rects': [(100, 100, 200, 50), (0, 250, 250, 10), (570, 100, 100, 180),
+    'rects': [(100, 100, 200, 50), (0, 250, 200, 10), (570, 100, 100, 180),
               (570, 400, 100, 100)],
     'arects': [(570, 500, 300, 40)]
 },

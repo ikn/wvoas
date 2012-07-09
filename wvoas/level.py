@@ -53,8 +53,10 @@ class Player:
         self.post_draw_update()
         self.vel = [0, 0]
         self.on_ground = 0
+        self.can_jump = level.ID in conf.CAN_JUMP
         self.jumping = 0
         self.jumped = False
+        self.can_move = level.ID in conf.CAN_MOVE
         self.moving = False
         self.moved = False
         move_channel.pause()
@@ -79,19 +81,25 @@ class Player:
 
     def move (self, dirn):
         dirn = 1 if dirn else -1
-        vx = self.vel[0]
-        if abs(vx) > 1 and (vx > 0) == (dirn > 0) and self.on_ground:
-            # actually moving along the ground (not against a wall)
-            if not self.moving:
-                move_channel.unpause()
-                self.moving = True
-            self.moved = dirn
-        speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
-        self.vel[0] += dirn * speed
+        if self.can_move:
+            vx = self.vel[0]
+            if abs(vx) > 1 and (vx > 0) == (dirn > 0) and self.on_ground:
+                # actually moving along the ground (not against a wall)
+                if not self.moving:
+                    move_channel.unpause()
+                    self.moving = True
+                self.moved = dirn
+            speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
+            self.vel[0] += dirn * speed
+        else:
+            self.skew_v += dirn
 
     def jump (self, press):
         if press:
-            if self.on_ground and not self.jumping:
+            if not self.can_jump:
+                self.impact(1, dv = -conf.FAIL_JUMP)
+                self.on_ground = 0
+            elif self.on_ground and not self.jumping:
                 self.impact(1, dv = -conf.INITIAL_JUMP)
                 self.jumping = conf.JUMP_TIME
                 self.on_ground = 0
@@ -352,12 +360,10 @@ class Level:
             self.init()
 
     def jump (self, key, mode, mods):
-        if self.ID in conf.CAN_JUMP:
-            self.player.jump(mode == 0)
+        self.player.jump(mode == 0)
 
     def move (self, key, mode, mods, i):
-        if self.ID in conf.CAN_MOVE:
-            self.player.move(i)
+        self.player.move(i)
 
     def update_window (self):
         w = self.window
