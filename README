@@ -11,10 +11,13 @@ Pygame (1.8 or later, probably; tested with 1.9.1)
 
     RUNNING
 
-./configure
-./run
+This should work wherever Pygame does.  On systems with a sh-compatible shell,
+do
 
-Should work wherever Pygame does.
+    ./run
+
+On other systems (Windows, for example), run game.py with your Python 2
+executable.
 
     PLAYING
 
