@@ -2,19 +2,22 @@ from sys import argv
 import os
 from time import time
 from random import choice
+from optparse import OptionParser
+
+d = os.path.dirname(argv[0])
+if d: # else current dir
+    os.chdir(d)
 
 import pygame
 from pygame.time import wait
 if os.name == 'nt':
     # for Windows freeze support
     import pygame._view
-d = os.path.dirname(argv[0])
-if d: # else current dir
-    os.chdir(d)
 from wvoas.ext import evthandler as eh
 
 pygame.mixer.pre_init(buffer = 1024)
 pygame.init()
+
 from wvoas.level import Level
 from wvoas import conf
 
@@ -388,25 +391,41 @@ if __name__ == '__main__':
     if conf.WINDOW_TITLE is not None:
         pygame.display.set_caption(conf.WINDOW_TITLE)
     pygame.mouse.set_visible(conf.MOUSE_VISIBLE)
-    args = (conf.DEBUG_INITIAL_LEVEL, conf.DEBUG_INITIAL_CP)
-    if len(argv) >= 2 and argv[1] == 'profile':
+    # options
+    op = OptionParser(prog = 'run')
+    op.add_option('-l', '--level', action = 'store', dest = 'level',
+                  type = 'int')
+    op.add_option('-c', '--checkpoint', action = 'store', dest = 'cp',
+                  type = 'int')
+    op.add_option('-p', '--profile', action = 'store_true', dest = 'profile')
+    op.add_option('-t', '--profile-time', action = 'store', dest = 'time',
+                  type = 'int')
+    op.add_option('-f', '--profile-file', action = 'store', dest = 'fn',
+                  type = 'string')
+    op.add_option('-n', '--num-stats', action = 'store', dest = 'num_stats',
+                  type = 'int')
+    op.add_option('-s', '--sort-stats', action = 'store', dest = 'sort_stats',
+                  type = 'string')
+    op.set_defaults(level = 0, cp = -1, time = conf.PROFILE_TIME,
+                    fn = conf.PROFILE_STATS_FILE,
+                    num_stats = conf.PROFILE_NUM_STATS,
+                    sort_stats = conf.PROFILE_STATS_SORT)
+    options = op.parse_args()[0]
+    level_args = (options.level, options.cp)
+    if options.profile:
         # profile
         from cProfile import run as profile
         from pstats import Stats
-        if len(argv) >= 3:
-            t = int(argv[2])
-        else:
-            t = conf.DEFAULT_PROFILE_TIME
-        t *= conf.FPS
-        fn = conf.PROFILE_STATS_FILE
-        profile('Game(Level, *args).run(t)', fn, locals())
-        Stats(fn).strip_dirs().sort_stats('cumulative').print_stats(20)
+        t = options.time * conf.FPS
+        fn = options.fn
+        profile('Game(Level, *level_args).run(t)', fn, locals())
+        Stats(fn).strip_dirs().sort_stats(options.sort_stats).print_stats(options.num_stats)
         os.unlink(fn)
     else:
         # run normally
         restarting = True
         while restarting:
             restarting = False
-            Game(Level, *args).run()
+            Game(Level, *level_args).run()
 
 pygame.quit()
