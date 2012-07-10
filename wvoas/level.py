@@ -101,13 +101,15 @@ class Player:
     def jump (self, press):
         if press:
             if self.on_ground and not self.jumping:
-                can_jump = self.can_jump
-                self.impact(1, dv = -(conf.INITIAL_JUMP if can_jump else conf.FAIL_JUMP))
-                if can_jump:
+                if self.can_jump:
+                    self.impact(1, dv = -conf.INITIAL_JUMP)
                     self.jumping = conf.JUMP_TIME
-                self.on_ground = 0
-                pos = Rect(self.level.to_screen(self.rect)).midbottom
-                self.level.add_ptcls('jump' if can_jump else 'fail_jump', pos)
+                    self.on_ground = 0
+                    pos = Rect(self.level.to_screen(self.rect)).midbottom
+                    self.level.add_ptcls('jump', pos)
+                else:
+                    self.squash_v[1] -= conf.INITIAL_JUMP
+                    self.level.game.play_snd('hit', conf.INITIAL_JUMP)
         elif self.jumping:
             self.jumped = True
 
@@ -142,9 +144,8 @@ class Player:
         self.jumped = False
         # move
         self.vel = [vx, vy]
-        r = self.rect
-        r[0] += vx
-        r[1] += vy
+        self.rect[0] += vx
+        self.rect[1] += vy
         # set if on ground
         if self.on_ground:
             self.on_ground -= 1
@@ -165,9 +166,9 @@ class Player:
             squash_v[i] -= k * squash[i]
             squash[i] += squash_v[i]
 
-        # draw stuff
+    def pre_draw (self):
         ox, oy = conf.PLAYER_OFFSET
-        x, y = (ir(r[0]) + ox, ir(r[1]) + oy)
+        x, y = (ir(self.rect[0]) + ox, ir(self.rect[1]) + oy)
         w0, h0 = self.img_size
         # copy image to use to sfc
         skew = ir(self.skew)
@@ -705,6 +706,7 @@ class Level:
         imgs = self.imgs
         w = self.window
         pl = self.player
+        pl.pre_draw()
         # background
         jitter = self.void_jitter
         self.update_jitter(jitter)
