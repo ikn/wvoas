@@ -10,15 +10,6 @@ import conf
 ir = lambda x: int(round(x))
 random0 = lambda: 2 * random() - 1
 
-# load move sound
-snd = pg.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
-move_channel = c = pg.mixer.find_channel()
-assert c is not None
-c.set_volume(0)
-c.play(snd, -1)
-c.pause()
-c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
-
 def tile (screen, img, rect, ox = 0, oy = 0, full = None):
     # get offset
     if full is not None:
@@ -61,7 +52,7 @@ class Player:
         self.can_move = level.ID in conf.CAN_MOVE
         self.moving = False
         self.moved = False
-        move_channel.pause()
+        level.move_channel.pause()
         self.img = level.game.img('player.png')
         self.sfc = pg.Surface(self.img_size).convert_alpha()
         self.skew_v = 0
@@ -90,7 +81,7 @@ class Player:
             if abs(vx) > 1 and (vx > 0) == (dirn > 0) and self.on_ground:
                 # actually moving along the ground (not against a wall)
                 if not self.moving:
-                    move_channel.unpause()
+                    self.level.move_channel.unpause()
                     self.moving = True
                 self.moved = dirn
             speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
@@ -123,7 +114,7 @@ class Player:
             self.level.add_ptcls('move', pos)
             if not self.moved:
                 self.moving = False
-                move_channel.pause()
+                self.level.move_channel.pause()
         self.moved = False
         # gravity
         vx, vy = self.vel
@@ -278,6 +269,14 @@ class Level:
         self.centre = (conf.RES[0] / 2, conf.RES[1] / 2)
         self.clouds = []
         self.load_graphics()
+        # load move sound
+        snd = pg.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
+        self.move_channel = c = pg.mixer.find_channel()
+        assert c is not None
+        c.set_volume(0)
+        c.play(snd, -1)
+        c.pause()
+        c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
         # load first level
         self.ID = None
         self.init(ID, cp)
@@ -346,7 +345,7 @@ class Level:
         self.goal_img = self.goal.move(conf.GOAL_OFFSET)
         self.goal_img.size = self.imgs['goal'].get_size()
         # rects
-        self.all_rects = [Rect(r) for r in data['rects']]
+        self.all_rects = [Rect(r) for r in data.get('rects', [])]
         self.all_vrects = [Rect(r) for r in data.get('vrects', [])]
         self.arects = [Rect(r) for r in data.get('arects', [])]
         self.update_rects()
@@ -358,7 +357,7 @@ class Level:
             self.init()
 
     def pause (self, *args):
-        move_channel.pause()
+        self.move_channel.pause()
         self.game.start_backend(Paused)
         self.paused = True
 
@@ -478,19 +477,19 @@ class Level:
         pos = list(Rect(self.to_screen(self.player.rect)).center)
         self.add_ptcls('die', pos, dirn)
         # sound
-        move_channel.pause()
+        self.move_channel.pause()
         self.game.play_snd('die')
 
     def next_level (self):
-        if self.ID == len(conf.LEVELS) - 1:
-            self.game.quit_backend()
-        else:
+        if self.ID + 1 in conf.EXISTS:
             self.init(self.ID + 1)
+        else:
+            self.game.quit_backend()
 
     def win (self):
         if self.winning:
             return
-        move_channel.pause()
+        self.move_channel.pause()
         self.winning = True
         self.start_fading(self.next_level)
 
@@ -512,7 +511,6 @@ class Level:
         x0, y0 = self.centre
         if self.paused:
             dx = dy = 0
-            self.paused = False
         else:
             x, y = pg.mouse.get_pos()
             dx, dy = x - x0, y - y0
@@ -699,8 +697,8 @@ class Level:
         jitter[5] -= 1
 
     def draw (self, screen):
-        # HACK: don't draw on last frame
-        if self.winning and not self.fading and self.ID == len(conf.LEVELS) - 1:
+        # don't draw on last frame
+        if not self.game.running:
             return False
         self.first = False
         imgs = self.imgs
@@ -712,7 +710,9 @@ class Level:
         self.update_jitter(jitter)
         ox, oy = jitter[3], jitter[4]
         img = imgs['void']
-        draw_all = jitter[5] == conf.VOID_JITTER_T - 1 or self.fading
+        draw_all = jitter[5] == conf.VOID_JITTER_T - 1 or self.fading or self.paused
+        if self.paused:
+            self.paused = False
         if draw_all:
             tile(screen, img, (0, 0) + screen.get_size(), ox, oy)
         else:
