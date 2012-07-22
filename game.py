@@ -18,10 +18,12 @@ from wvoas.ext import evthandler as eh
 pygame.mixer.pre_init(buffer = 1024)
 pygame.init()
 
+from wvoas.ui import LevelSelect
 from wvoas.level import Level
 from wvoas import conf
 
 ir = lambda x: int(round(x))
+
 
 class Game (object):
     """Handles backends.
@@ -385,6 +387,7 @@ volume: float to scale volume by.
         conf.RES_W = (event.w, event.h)
         self.refresh_display()
 
+
 if __name__ == '__main__':
     if conf.WINDOW_ICON is not None:
         pygame.display.set_icon(pygame.image.load(conf.WINDOW_ICON))
@@ -406,19 +409,29 @@ if __name__ == '__main__':
                   type = 'int')
     op.add_option('-s', '--sort-stats', action = 'store', dest = 'sort_stats',
                   type = 'string')
-    op.set_defaults(level = 0, cp = -1, time = conf.PROFILE_TIME,
+    op.set_defaults(level = None, cp = None, time = conf.PROFILE_TIME,
                     fn = conf.PROFILE_STATS_FILE,
                     num_stats = conf.PROFILE_NUM_STATS,
                     sort_stats = conf.PROFILE_STATS_SORT)
     options = op.parse_args()[0]
-    level_args = (options.level, options.cp)
+    level_args = [options.level, options.cp]
+    missing_args = [arg is None for arg in level_args]
+    if all(missing_args):
+        cls = LevelSelect
+        level_args = ()
+    else:
+        cls = Level
+        if missing_args[0]:
+            level_args[0] = 0
+        if missing_args[1]:
+            level_args[1] = -1
     if options.profile:
         # profile
         from cProfile import run as profile
         from pstats import Stats
         t = options.time * conf.FPS
         fn = options.fn
-        profile('Game(Level, *level_args).run(t)', fn, locals())
+        profile('Game({0}, *level_args).run(t)'.format(cls.__name__), fn, locals())
         Stats(fn).strip_dirs().sort_stats(options.sort_stats).print_stats(options.num_stats)
         os.unlink(fn)
     else:
@@ -426,6 +439,6 @@ if __name__ == '__main__':
         restarting = True
         while restarting:
             restarting = False
-            Game(Level, *level_args).run()
+            Game(cls, *level_args).run()
 
 pygame.quit()

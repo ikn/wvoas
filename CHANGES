@@ -1,9 +1,10 @@
 release 2:
+ * 6 extra levels (now 22 total), and changes to some existing levels
  * combine title screen and first level
- * changes to some existing levels
  * increase contrast in some colours
  * performance improvements
- * slime wobbles and stretches
+ * slime wobbles and squashes
+ * code cleanup, gameplay tweaks, bug fixes
 
 release 1:
  * 9 extra levels (now 16 total), and changes to some existing levels

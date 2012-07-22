@@ -11,7 +11,7 @@ MUSIC_DIR = DATA_DIR + 'music' + sep
 # display
 WINDOW_ICON = IMG_DIR + 'icon.png'
 WINDOW_TITLE = 'World View of a Slime'
-MOUSE_VISIBLE = False
+MOUSE_VISIBLE = True
 FLAGS = 0
 FULLSCREEN = False
 RESIZABLE = False # also determines whether fullscreen togglable
@@ -55,7 +55,7 @@ HIT_VOL_THRESHOLD = 2 # before scaling
 PLAYER_SIZE = (15, 30)
 PLAYER_SPEED = 1
 PLAYER_AIR_SPEED = .2
-LAUNCH_SPEED = .5
+LAUNCH_SPEED = .6
 INITIAL_JUMP = 5
 CONTINUE_JUMP = .7
 FAIL_JUMP = 2
@@ -74,11 +74,7 @@ WINDOW_SIZE = [x * 2 for x in HALF_WINDOW_SIZE]
 ERR = 10 ** -10
 WINDOW_MOVE_AMOUNT = 3
 
-# levels
-CAN_JUMP = range(11)
-CAN_MOVE = range(17)
-EXISTS = range(21)
-# all positions must be ints
+# levels (all positions must be ints)
 LEVELS = [{
     'bgs': ('bg', ('bg0', (154, 75))),
     'player_pos': (100, 25),
@@ -146,12 +142,13 @@ LEVELS = [{
     'vrects': [(0, 265, 475, 50), (0, 375, 960, 130), (485, 155, 475, 50)],
     'arects': [(475, 0, 10, 370)]
 },
-    # can't jump
+    'disable jump',
 {
     'player_pos': (100, 310),
     'goal': (860, 280),
-    'rects': [(0, 340, 250, 60), (710, 340, 250, 60)],
-    'arects': [(250, 240, 460, 160)]
+    'rects': [(0, 340, 200, 60), (760, 340, 200, 60)],
+    'vrects': [(380, 340, 200, 60)],
+    'arects': [(200, 240, 180, 160), (580, 240, 180, 160)]
 }, {
     'player_pos': (200, 340),
     'goal': (760, 310),
@@ -163,8 +160,8 @@ LEVELS = [{
     'rects': [(0, 150, 300, 10), (660, 450, 300, 10)],
     'arects': [(0, 110, 300, 10)]
 }, {
-    'player_pos': (150, 120),
-    'goal': (675, 450),
+    'player_pos': (180, 120),
+    'goal': (750, 450),
     'checkpoints': [(595, 320)],
     'rects': [(0, 150, 200, 10)],
     'vrects': [(550, 0, 100, 340)],
@@ -183,8 +180,16 @@ LEVELS = [{
               (480, 295, 100, 50)],
     'vrects': [(480, 245, 97, 50), (580, 295, 100, 50)],
     'arects': [(280, 295, 200, 50)]
+}, {
+    'player_pos': (53, 480),
+    'goal': (898, 450),
+    'checkpoints': [(470, 490)],
+    'rects': [(0, 510, 960, 30), (185, 50, 15, 260), (685, 50, 15, 160)],
+    'vrects': [(185, 310, 15, 200), (0, 110, 15, 200), (685, 210, 15, 300)],
+    'arects': [(0, 0, 450, 10), (200, 50, 50, 460), (450, 0, 50, 460),
+               (700, 50, 50, 460)]
 },
-    # can't move
+    'disable move',
 {
     'player_pos': (370, 170),
     'goal': (580, 390),
@@ -207,12 +212,42 @@ LEVELS = [{
     'rects': [(0, 340, 300, 60), (300, 240, 460, 10), (760, 340, 200, 60)],
     'arects': [(300, 250, 460, 150)]
 },
-    # doesn't exist
+    'disable exists',
 {
     'player_pos': (473, 255),
     'goal': (500, -100),
     'vrects': [(0, 0, 960, 540)]
 }]
+# compile some properties
+CAN_JUMP = [True]
+CAN_MOVE = [True]
+EXISTS = [True]
+_properties = {'jump': CAN_JUMP, 'move': CAN_MOVE, 'exists': EXISTS}
+i = 0
+while i < len(LEVELS):
+    s = LEVELS[i]
+    if isinstance(s, basestring):
+        # property modifier: alter property list's first item
+        if s.startswith('disable'):
+            s = s[8:]
+            v = False
+        else: # enable
+            s = s[7:]
+            v = True
+        for p, l in _properties.iteritems():
+            if s == p:
+                l[0] = v
+        # remove from LEVELS
+        LEVELS.pop(i)
+    else:
+        # level
+        for p, l in _properties.iteritems():
+            if l[0]:
+                l.append(i)
+        i += 1
+for l in _properties.itervalues():
+    l.pop(0)
+del _properties
 
 # graphics
 # images

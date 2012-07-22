@@ -6,6 +6,7 @@ from pygame import Rect
 from ext import evthandler as eh
 
 import conf
+import ui
 
 ir = lambda x: int(round(x))
 random0 = lambda: 2 * random() - 1
@@ -52,7 +53,8 @@ class Player:
         self.can_move = level.ID in conf.CAN_MOVE
         self.moving = False
         self.moved = False
-        level.move_channel.pause()
+        if self.level.event_handler is not None:
+            level.move_channel.pause()
         self.img = level.game.img('player.png')
         self.sfc = pg.Surface(self.img_size).convert_alpha()
         self.skew_v = 0
@@ -204,85 +206,43 @@ class Player:
         self.old_rect = list(self.rect)
         self.old_rect_img = self.rect_img
 
-class Paused:
-    def __init__ (self, game, event_handler):
-        self.game = game
-        self.event_handler = event_handler
-        self.frame = conf.FRAME
-        self.fading = True
-        self.fade_counter = conf.PAUSE_FADE_TIME
-        self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
-        self.sfc = pg.display.get_surface().copy()
-        self.text = game.img('paused.png')
-        event_handler.add_key_handlers([
-            (conf.KEYS_BACK + conf.KEYS_NEXT, self.unpause, eh.MODE_ONDOWN)
-        ])
-        pg.mixer.music.set_volume(conf.PAUSED_MUSIC_VOLUME * .01)
-        pg.mouse.set_visible(True)
-
-    def unpause (self, *args):
-        pg.mixer.music.set_volume(conf.MUSIC_VOLUME * .01)
-        pg.mouse.set_visible(conf.MOUSE_VISIBLE)
-        self.game.quit_backend()
-
-    def update (self):
-        pass
-
-    def draw (self, screen):
-        if self.fading:
-            # draw
-            t = conf.PAUSE_FADE_TIME - self.fade_counter
-            alpha = conf.PAUSE_FADE_RATE * float(t) / conf.PAUSE_FADE_TIME
-            alpha = min(255, ir(alpha))
-            self.fade_sfc.fill((0, 0, 0, alpha))
-            screen.blit(self.sfc, (0, 0))
-            screen.blit(self.fade_sfc, (0, 0))
-            screen.blit(self.text, (0, 0))
-            # update counter
-            self.fade_counter -= 1
-            if self.fade_counter == 0:
-                self.fading = False
-                del self.fade_sfc
-            return True
-        else:
-            return False
-
 
 class Level:
-    def __init__ (self, game, event_handler, ID = 0, cp = -1):
+    def __init__ (self, game, event_handler = None, ID = 0, cp = -1):
         self.game = game
         self.event_handler = event_handler
         self.frame = conf.FRAME
         # input
-        event_handler.add_event_handlers({
-            pg.KEYDOWN: self.skip,
-            pg.MOUSEBUTTONDOWN: self.skip
-        })
-        event_handler.add_key_handlers([
-            (conf.KEYS_BACK, self.pause, eh.MODE_ONDOWN),
-            (conf.KEYS_RESET, self.reset, eh.MODE_ONDOWN),
-            (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1)
-        ] + [
-            (ks, [(self.move, (i,))], eh.MODE_HELD)
-            for i, ks in enumerate(conf.KEYS_MOVE)
-        ])
+        if event_handler is not None:
+            event_handler.add_event_handlers({
+                pg.KEYDOWN: self.skip,
+                pg.MOUSEBUTTONDOWN: self.skip
+            })
+            event_handler.add_key_handlers([
+                (conf.KEYS_BACK, self.pause, eh.MODE_ONDOWN),
+                (conf.KEYS_RESET, self.reset, eh.MODE_ONDOWN),
+                (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1)
+            ] + [
+                (ks, [(self.move, (i,))], eh.MODE_HELD)
+                for i, ks in enumerate(conf.KEYS_MOVE)
+            ])
         self.centre = (conf.RES[0] / 2, conf.RES[1] / 2)
         self.clouds = []
         self.load_graphics()
-        # load move sound
-        snd = pg.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
-        self.move_channel = c = pg.mixer.find_channel()
-        assert c is not None
-        c.set_volume(0)
-        c.play(snd, -1)
-        c.pause()
-        c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
+        if event_handler is not None:
+            # load move sound
+            snd = pg.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
+            self.move_channel = c = pg.mixer.find_channel()
+            assert c is not None
+            c.set_volume(0)
+            c.play(snd, -1)
+            c.pause()
+            c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
         # load first level
         self.ID = None
         self.init(ID, cp)
 
     def init (self, ID = None, cp = None):
-        self.first = True
         self.paused = False
         self.dying = False
         self.first_dying = False
@@ -358,7 +318,7 @@ class Level:
 
     def pause (self, *args):
         self.move_channel.pause()
-        self.game.start_backend(Paused)
+        self.game.start_backend(ui.Paused)
         self.paused = True
 
     def reset (self, *args):
@@ -698,9 +658,8 @@ class Level:
 
     def draw (self, screen):
         # don't draw on last frame
-        if not self.game.running:
-            return False
-        self.first = False
+        #if not self.game.running:
+            #return False
         imgs = self.imgs
         w = self.window
         pl = self.player
