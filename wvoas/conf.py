@@ -1,6 +1,9 @@
 from os import sep
+from collections import defaultdict
 
 import pygame as pg
+
+dd = lambda default, items = {}: defaultdict(lambda: default, items)
 
 # paths
 DATA_DIR = ''
@@ -11,7 +14,7 @@ MUSIC_DIR = DATA_DIR + 'music' + sep
 # display
 WINDOW_ICON = IMG_DIR + 'icon.png'
 WINDOW_TITLE = 'World View of a Slime'
-MOUSE_VISIBLE = True
+MOUSE_VISIBLE = dd(False, {'levelselect': True})
 FLAGS = 0
 FULLSCREEN = False
 RESIZABLE = False # also determines whether fullscreen togglable
@@ -21,8 +24,7 @@ MIN_RES_W = (320, 180)
 ASPECT_RATIO = None
 
 # timing
-FPS = 60
-FRAME = 1. / FPS
+FPS = dd(60) # keys are backend IDs
 
 # debug
 PROFILE_TIME = 5
@@ -38,8 +40,10 @@ KEYS_FULLSCREEN = (pg.K_F11, (pg.K_RETURN, pg.KMOD_ALT, True),
                    (pg.K_KP_ENTER, pg.KMOD_ALT, True))
 KEYS_LEFT = (pg.K_LEFT, pg.K_a, pg.K_q)
 KEYS_RIGHT = (pg.K_RIGHT, pg.K_d, pg.K_e)
-KEYS_MOVE = (KEYS_LEFT, KEYS_RIGHT)
-KEYS_JUMP = (pg.K_UP, pg.K_SPACE, pg.K_w, pg.K_z, pg.K_COMMA)
+KEYS_UP = (pg.K_UP, pg.K_w, pg.K_z, pg.K_COMMA)
+KEYS_DOWN = (pg.K_DOWN, pg.K_s, pg.K_o)
+KEYS_MOVE = (KEYS_LEFT, KEYS_UP, KEYS_RIGHT, KEYS_DOWN)
+KEYS_JUMP = (pg.K_SPACE,) + KEYS_UP
 KEYS_RESET = (pg.K_r, pg.K_p)
 
 # audio

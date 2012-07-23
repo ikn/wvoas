@@ -211,7 +211,6 @@ class Level:
     def __init__ (self, game, event_handler = None, ID = 0, cp = -1):
         self.game = game
         self.event_handler = event_handler
-        self.frame = conf.FRAME
         # input
         if event_handler is not None:
             event_handler.add_event_handlers({
@@ -224,7 +223,7 @@ class Level:
                 (conf.KEYS_JUMP, self.jump, eh.MODE_ONDOWN_REPEAT, 1, 1)
             ] + [
                 (ks, [(self.move, (i,))], eh.MODE_HELD)
-                for i, ks in enumerate(conf.KEYS_MOVE)
+                for i, ks in enumerate((conf.KEYS_LEFT, conf.KEYS_RIGHT))
             ])
         self.centre = (conf.RES[0] / 2, conf.RES[1] / 2)
         self.clouds = []
@@ -251,6 +250,7 @@ class Level:
         self.particles = []
         self.particle_rects = []
         self.void_jitter = [conf.VOID_JITTER_X, conf.VOID_JITTER_Y, conf.VOID_JITTER_T]
+        self.first = True
         # get level/current checkpoint
         if ID is None:
             # same level
@@ -295,8 +295,6 @@ class Level:
         w, h = conf.HALF_WINDOW_SIZE
         self.window = Rect(x - w, y - h, 2 * w, 2 * h)
         self.old_window = self.window.copy()
-        # centre mouse to avoid initial window movement
-        pg.mouse.set_pos(self.centre)
         # checkpoints
         s = conf.CHECKPOINT_SIZE
         self.checkpoints = [Rect(p + s) for p in data.get('checkpoints', [])]
@@ -469,8 +467,9 @@ class Level:
         w = self.window
         self.old_window = w.copy()
         x0, y0 = self.centre
-        if self.paused:
+        if self.paused or self.first:
             dx = dy = 0
+            self.first = False
         else:
             x, y = pg.mouse.get_pos()
             dx, dy = x - x0, y - y0

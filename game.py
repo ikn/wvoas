@@ -24,17 +24,30 @@ from wvoas import conf
 
 ir = lambda x: int(round(x))
 
+def get_backend_id (backend):
+    """Return the computed identifier of the given backend.
+
+See Game.create_backend for details.
+
+"""
+    try:
+        return backend.id
+    except AttributeError:
+        return type(backend).__name__.lower()
+
 
 class Game (object):
     """Handles backends.
 
-Takes the same arguments as Game.start_backend and passes them to it.
+Takes the same arguments as the create_backend method and passes them to it.
 
     METHODS
 
+create_backend
+select_backend
 start_backend
+get_backends
 quit_backend
-set_backend_attrs
 img
 play_snd
 find_music
@@ -48,16 +61,17 @@ minimise
 
     ATTRIBUTES
 
-running: set to False to exit the main loop (Game.run).
+running: set to False to exit the main loop (run method).
 imgs: image cache.
 files: loaded image cache (before resize).
 music: filenames for known music.
 backend: the current running backend.
 backends: a list of previous (nested) backends, most 'recent' last.
+frame: the current target duration of a frame, in seconds.
 
 """
 
-    def __init__ (self, cls, *args):
+    def __init__ (self, *args, **kwargs):
         self.running = False
         self.files = {}
         self.imgs = {}
@@ -70,17 +84,17 @@ backends: a list of previous (nested) backends, most 'recent' last.
         self.refresh_display()
         # start first backend
         self.backends = []
-        self.start_backend(cls, *args)
+        self.start_backend(*args, **kwargs)
 
-    def start_backend (self, cls, *args):
-        """Start a new backend.
+    def create_backend (self, cls, *args, **kwargs):
+        """Create a backend.
 
-start_backend(cls, *args) -> backend
+create_backend(cls, *args, **kwargs) -> backend
 
 cls: the backend class to instantiate.
-args: arguments to pass to the constructor.
+args, kwargs: positional- and keyword arguments to pass to the constructor.
 
-backend: the new created instance of cls that is the new backend.
+backend: the created backend.
 
 Backends handle pretty much everything, including drawing, and must have update
 and draw methods, as follows:
@@ -92,13 +106,16 @@ draw(screen) -> drawn: draw anything necessary to screen; drawn is True if the
                        update the display in.
 
 A backend is also given a dirty attribute, which indicates whether its draw
-method should redraw everything (it should set it to False when it does so),
-and should define a frame attribute, which is the length of one frame in
-seconds.
+method should redraw everything (it should set it to False when it does so).
+It may define an id attribute, which is a unique identifier used for some
+settings in conf; if none is set, type(backend).__name__.lower() will be used.
 
-A backend is constructed via
-cls(Game_instance, EventHandler_instance, *args), and should store
-EventHandler_instance in its event_handler attribute.
+A backend is constructed via:
+
+    cls(game, event_handler, *args, **kwargs)
+
+game is this Game instance; event_handler is the EventHandler instance the
+backend should use for input, and is stored in its event_handler attribute.
 
 """
         # create event handler for this backend
@@ -111,24 +128,70 @@ EventHandler_instance in its event_handler attribute.
             (conf.KEYS_FULLSCREEN, self.toggle_fullscreen, eh.MODE_ONDOWN),
             (conf.KEYS_MINIMISE, self.minimise, eh.MODE_ONDOWN)
         ], False, self.quit)
+        # instantiate class
+        backend = cls(self, event_handler, *args)
+        backend.event_handler = event_handler
+        return backend
+
+    def select_backend (self, backend):
+        """Set the given backend as the current backend."""
+        self.backend = backend
+        backend.dirty = True
+        self._update_again = True
+        i = get_backend_id(backend)
+        pygame.mouse.set_visible(conf.MOUSE_VISIBLE[i])
+        self.frame = 1. / conf.FPS[i]
+
+    def start_backend (self, *args, **kwargs):
+        """Start a new backend.
+
+Takes the same arguments as create_backend; see that method for details.
+
+Returns the started backend.
+
+"""
         # store current backend in history, if any
         try:
             self.backends.append(self.backend)
         except AttributeError:
             pass
-        # create new backend
-        self.backend = cls(self, event_handler, *args)
-        self.backend.dirty = True
-        return self.backend
+        # create backend
+        backend = self.create_backend(*args, **kwargs)
+        self.select_backend(backend)
+        return backend
 
-    def quit_backend (self, depth = 1, no_quit = False):
+    def switch_backend (self, *args, **kwargs):
+        """Close the current backend and start a new one.
+
+Takes the same arguments as create_backend and returns the created backend.
+
+"""
+        backend = self.create_backend(*args, **kwargs)
+        self.select_backend(backend)
+        return backend
+
+    def get_backends (self, ident, current = True):
+        """Get a list of running backends, filtered by ID.
+
+get_backends(ident, current = True) -> backends
+
+ident: the backend identifier to look for (see create_backend for details).
+current: include the current backend in the search.
+
+backends: the backend list, in order of time started, most recent last.
+
+"""
+        backends = []
+        for backend in self.backends + ([self.backend] if current else []):
+            if get_backend_id(backend) == ident:
+                backends.append(backend)
+
+    def quit_backend (self, depth = 1):
         """Quit the currently running backend.
 
-quit_backend(depth = 1, no_quit = False)
+quit_backend(depth = 1)
 
-depth: quit this many backends.
-no_quit: if True, don't quit if this is the last backend.  Only pass this if
-         you're starting another backend in the same frame.
+depth: quit this many (nested) backends.
 
 If the running backend is the last (root) one, exit the game.
 
@@ -136,37 +199,15 @@ If the running backend is the last (root) one, exit the game.
         if depth < 1:
             return
         try:
-            self.backend = self.backends.pop()
+            backend = self.backends.pop()
         except IndexError:
             if no_quit:
                 del self.backend
             else:
                 self.quit()
         else:
-            self.backend.dirty = True
-        depth -= 1
-        if depth:
-            self.quit_backend(depth)
-        else:
-            # need to update new backend before drawing
-            self._update_again = True
-
-    def set_backend_attrs (self, cls, attr, val, current = True,
-                           inherit = True):
-        """Set an attribute of all backends with a specific class.
-
-set_backend_attrs(cls, attr, val, current = True, inherit = True)
-
-cls: the backend class to look for.
-attr: the name of the attribute to set.
-val: the value to set the attribute to.
-current: include the current backend in the search.
-inherit: also apply to all classes that inherit from the given class.
-
-        """
-        for backend in self.backends + ([self.backend] if current else []):
-            if isinstance(backend, cls) if inherit else (backend == cls):
-                setattr(backend, attr, val)
+            self.select_backend(backend)
+        self.quit_backend(depth - 1)
 
     def convert_img (self, img):
         """Convert an image for blitting."""
@@ -324,7 +365,7 @@ volume: float to scale volume by.
             draw()
             # wait
             t1 = time()
-            t0 = t1 + wait(int(1000 * (self.backend.frame - t1 + t0))) / 1000.
+            t0 = t1 + wait(int(1000 * (self.frame - t1 + t0))) / 1000.
             # counter
             n -= 1
             if n == 0:
@@ -393,7 +434,6 @@ if __name__ == '__main__':
         pygame.display.set_icon(pygame.image.load(conf.WINDOW_ICON))
     if conf.WINDOW_TITLE is not None:
         pygame.display.set_caption(conf.WINDOW_TITLE)
-    pygame.mouse.set_visible(conf.MOUSE_VISIBLE)
     # options
     op = OptionParser(prog = 'run')
     op.add_option('-l', '--level', action = 'store', dest = 'level',

@@ -76,18 +76,26 @@ the lines with their centres on the rect's borders.
         draw_line(surface, colour, p, q, width[not i % 2])
 
 
-class LevelSelect:
+class LevelSelect (object):
     def __init__ (self, game, event_handler):
         self.game = game
         self.event_handler = event_handler
-        self.frame = conf.FRAME
         # input
-        event_handler.add_event_handlers({pg.MOUSEMOTION: self.set_current})
+        event_handler.add_event_handlers({
+            pg.MOUSEBUTTONDOWN: self.click,
+            pg.MOUSEMOTION: self.set_current_from_mouse
+        })
+        event_handler.add_key_handlers([
+            (conf.KEYS_BACK, lambda *args: game.quit_backend, eh.MODE_ONDOWN),
+        ] + [
+            (ks, [(self.move, (i,))], eh.MODE_ONDOWN_REPEAT, 15, 7)
+             for i, ks in enumerate(conf.KEYS_MOVE)
+        ])
         # generate level thumbnails
         ids = conf.EXISTS
-        n = len(ids)
-        cols = min(i for i in xrange(n + 1) if i * i >= n)
-        rows = n / cols + bool(n % cols)
+        self.num_levels = n = len(ids)
+        self.cols = cols = min(i for i in xrange(n + 1) if i * i >= n)
+        self.rows = rows = n / cols + bool(n % cols)
         self.levels = levels = []
         w, h = conf.RES
         ws = split(w, cols)
@@ -95,7 +103,11 @@ class LevelSelect:
         x = w_i = h_i = 0
         y = (h - sum(hs)) / 2
         draw_sfc = pg.Surface(conf.RES)
+        vertical_order = []
+        row = []
+        vertical_order.append(row)
         for i in ids:
+            row.append(i)
             rect = pg.Rect((x, y, ws[w_i], hs[h_i])).inflate(-2, -2)
             # generate image
             sfc = pg.Surface(rect[2:])
@@ -103,32 +115,55 @@ class LevelSelect:
             l.draw(draw_sfc)
             sfc = pg.transform.smoothscale(draw_sfc, rect[2:])
             # dim or brighten surface
-            c = (0, 0, 0, 100) if i in list(range(7)) + [12, 13, 19, 16] else (255, 255, 255, 30)
-            mod_sfc = pg.Surface(rect[2:]).convert_alpha()
-            mod_sfc.fill(c)
-            sfc.blit(mod_sfc, (0, 0))
+            c = (0, 0, 0, 150) if i in list(range(7)) + [12, 13, 19, 16] else (255, 255, 255, 30)
+            if i in list(range(7)) + [12, 13, 19, 16]:
+                mod_sfc = pg.Surface(rect[2:]).convert_alpha()
+                mod_sfc.fill(c)
+                sfc.blit(mod_sfc, (0, 0))
             levels.append((i, rect, sfc.convert()))
             # get next rect
             x += ws[w_i]
             w_i += 1
             if w_i == cols:
+                row = []
+                vertical_order.append(row)
                 x = w_i = 0
                 y += hs[h_i]
                 h_i += 1
+        self.last = 0
         self.current = None
-        self.set_current(force = True)
+        self.set_current_from_mouse()
+        self.vertical_order = sum([[row[i] for row in vertical_order if len(row) > i] for i in xrange(cols)], [])
 
-    def set_current (self, evt = None, force = False):
+    def set_current_from_mouse (self, evt = None):
         if evt is None:
             pos = pg.mouse.get_pos()
         else:
             pos = evt.pos
-        current = 0 if force else None
+        current = None
         for i, r, s in self.levels:
             if r.inflate(2, 2).collidepoint(pos):
                 current = i
-        if current not in (None, self.current):
+        if current != self.current:
             self.current = current
+            if current is not None:
+                self.last = current
+            self.dirty = True
+
+    def click (self, evt):
+        self.set_current()
+        if self.current is not None:
+            self.game.start_backend(level.Level, self.current)
+
+    def move (self, key, mode, mods, i):
+        dirn = 1 if i > 1 else -1
+        if i % 2:
+            i = (self.vertical_order.index(self.last) + dirn) % self.num_levels
+            i = self.vertical_order[i]
+        else:
+            i = (self.last + dirn) % self.num_levels
+        if i != self.current:
+            self.last = self.current = i
             self.dirty = True
 
     def update (self):
@@ -152,7 +187,6 @@ class Paused:
     def __init__ (self, game, event_handler):
         self.game = game
         self.event_handler = event_handler
-        self.frame = conf.FRAME
         self.fade_counter = conf.PAUSE_FADE_TIME
         self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
         self.sfc = pg.display.get_surface().copy()
