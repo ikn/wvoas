@@ -108,7 +108,8 @@ draw(screen) -> drawn: draw anything necessary to screen; drawn is True if the
 A backend is also given a dirty attribute, which indicates whether its draw
 method should redraw everything (it should set it to False when it does so).
 It may define an id attribute, which is a unique identifier used for some
-settings in conf; if none is set, type(backend).__name__.lower() will be used.
+settings in conf; if none is set, type(backend).__name__.lower() will be used
+(for this to make sense, the backend must be a new-style class).
 
 A backend is constructed via:
 
@@ -201,10 +202,7 @@ If the running backend is the last (root) one, exit the game.
         try:
             backend = self.backends.pop()
         except IndexError:
-            if no_quit:
-                del self.backend
-            else:
-                self.quit()
+            self.quit()
         else:
             self.select_backend(backend)
         self.quit_backend(depth - 1)
@@ -469,7 +467,7 @@ if __name__ == '__main__':
         # profile
         from cProfile import run as profile
         from pstats import Stats
-        t = options.time * conf.FPS
+        t = options.time * conf.FPS[get_backend_id(cls)]
         fn = options.fn
         profile('Game({0}, *level_args).run(t)'.format(cls.__name__), fn, locals())
         Stats(fn).strip_dirs().sort_stats(options.sort_stats).print_stats(options.num_stats)

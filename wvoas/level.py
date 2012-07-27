@@ -207,7 +207,7 @@ class Player:
         self.old_rect_img = self.rect_img
 
 
-class Level:
+class Level (object):
     def __init__ (self, game, event_handler = None, ID = 0, cp = -1):
         self.game = game
         self.event_handler = event_handler

@@ -14,7 +14,7 @@ MUSIC_DIR = DATA_DIR + 'music' + sep
 # display
 WINDOW_ICON = IMG_DIR + 'icon.png'
 WINDOW_TITLE = 'World View of a Slime'
-MOUSE_VISIBLE = dd(False, {'levelselect': True})
+MOUSE_VISIBLE = dd(True, {'level': False})
 FLAGS = 0
 FULLSCREEN = False
 RESIZABLE = False # also determines whether fullscreen togglable

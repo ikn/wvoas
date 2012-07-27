@@ -86,7 +86,8 @@ class LevelSelect (object):
             pg.MOUSEMOTION: self.set_current_from_mouse
         })
         event_handler.add_key_handlers([
-            (conf.KEYS_BACK, lambda *args: game.quit_backend, eh.MODE_ONDOWN),
+            (conf.KEYS_BACK, lambda *args: game.quit_backend(), eh.MODE_ONDOWN),
+            (conf.KEYS_NEXT, self.select, eh.MODE_ONDOWN),
         ] + [
             (ks, [(self.move, (i,))], eh.MODE_ONDOWN_REPEAT, 15, 7)
              for i, ks in enumerate(conf.KEYS_MOVE)
@@ -97,6 +98,7 @@ class LevelSelect (object):
         self.cols = cols = min(i for i in xrange(n + 1) if i * i >= n)
         self.rows = rows = n / cols + bool(n % cols)
         self.levels = levels = []
+        self.level_ids = level_ids = {}
         w, h = conf.RES
         ws = split(w, cols)
         hs = split(ir(h * float(rows) / cols), rows)
@@ -106,7 +108,7 @@ class LevelSelect (object):
         vertical_order = []
         row = []
         vertical_order.append(row)
-        for i in ids:
+        for j, i in enumerate(ids):
             row.append(i)
             rect = pg.Rect((x, y, ws[w_i], hs[h_i])).inflate(-2, -2)
             # generate image
@@ -120,6 +122,7 @@ class LevelSelect (object):
                 mod_sfc = pg.Surface(rect[2:]).convert_alpha()
                 mod_sfc.fill(c)
                 sfc.blit(mod_sfc, (0, 0))
+            level_ids[i] = j
             levels.append((i, rect, sfc.convert()))
             # get next rect
             x += ws[w_i]
@@ -131,7 +134,8 @@ class LevelSelect (object):
                 y += hs[h_i]
                 h_i += 1
         self.last = 0
-        self.current = None
+        self.last_current = self.current = None
+        self.changed = False
         self.set_current_from_mouse()
         self.vertical_order = sum([[row[i] for row in vertical_order if len(row) > i] for i in xrange(cols)], [])
 
@@ -148,39 +152,63 @@ class LevelSelect (object):
             self.current = current
             if current is not None:
                 self.last = current
-            self.dirty = True
 
     def click (self, evt):
-        self.set_current()
+        self.set_current_from_mouse()
         if self.current is not None:
-            self.game.start_backend(level.Level, self.current)
+            self.start_level()
 
     def move (self, key, mode, mods, i):
-        dirn = 1 if i > 1 else -1
-        if i % 2:
-            i = (self.vertical_order.index(self.last) + dirn) % self.num_levels
-            i = self.vertical_order[i]
+        if self.current is None:
+            self.current = self.last
         else:
-            i = (self.last + dirn) % self.num_levels
-        if i != self.current:
-            self.last = self.current = i
-            self.dirty = True
+            dirn = 1 if i > 1 else -1
+            if i % 2:
+                i = (self.vertical_order.index(self.last) + dirn) % self.num_levels
+                i = self.vertical_order[i]
+            else:
+                i = (self.last + dirn) % self.num_levels
+            if i != self.current:
+                self.last = self.current = i
+
+    def select (self, *args):
+        if self.current is None:
+            self.current = self.last
+        else:
+            self.start_level()
+
+    def start_level (self):
+        self.game.start_backend(level.Level, self.current)
 
     def update (self):
-        pass
+        if self.current != self.last_current:
+            self.changed = [x for x in (self.current, self.last_current) \
+                            if x is not None]
+            self.last_current = self.current
 
     def draw (self, screen):
+        levels = self.levels
         if self.dirty:
-            current = self.current
             screen.fill((20, 10, 5))
-            for i, rect, sfc in self.levels:
-                screen.blit(sfc, rect)
-                if i == current:
-                    draw_rect(screen, (190, 190, 80), rect.inflate(2, 2), 2)
+        elif self.changed:
+            levels = [levels[j] for j in self.changed]
+            self.changed = False
+        else:
+            return False
+        rects = []
+        current = self.current
+        for i, rect, sfc in levels:
+            whole_rect = rect.inflate(2, 2)
+            screen.fill((20, 10, 5), whole_rect)
+            screen.blit(sfc, rect)
+            if i == current:
+                draw_rect(screen, (190, 190, 80), whole_rect, 2)
+            rects.append(whole_rect)
+        if self.dirty:
             self.dirty = False
             return True
         else:
-            return False
+            return rects
 
 
 class Paused:
@@ -195,11 +223,9 @@ class Paused:
             (conf.KEYS_BACK + conf.KEYS_NEXT, self.unpause, eh.MODE_ONDOWN)
         ])
         pg.mixer.music.set_volume(conf.PAUSED_MUSIC_VOLUME * .01)
-        pg.mouse.set_visible(True)
 
     def unpause (self, *args):
         pg.mixer.music.set_volume(conf.MUSIC_VOLUME * .01)
-        pg.mouse.set_visible(conf.MOUSE_VISIBLE)
         self.game.quit_backend()
 
     def update (self):
