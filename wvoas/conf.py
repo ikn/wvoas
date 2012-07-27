@@ -254,6 +254,10 @@ for l in _properties.itervalues():
 del _properties
 
 # graphics
+# level select
+LS_BG_COLOUR = (120, 120, 120)
+LS_HL_COLOUR = (150, 150, 0)
+LS_HL_WIDTH = 2
 # images
 DEFAULT_BGS = ('bg',)
 BGS = DEFAULT_BGS + sum((l.get('bgs', ()) for l in LEVELS), ())

@@ -53,7 +53,7 @@ class Player:
         self.can_move = level.ID in conf.CAN_MOVE
         self.moving = False
         self.moved = False
-        if self.level.event_handler is not None:
+        if level.move_channel is not None:
             level.move_channel.pause()
         self.img = level.game.img('player.png')
         self.sfc = pg.Surface(self.img_size).convert_alpha()
@@ -83,12 +83,13 @@ class Player:
             if abs(vx) > 1 and (vx > 0) == (dirn > 0) and self.on_ground:
                 # actually moving along the ground (not against a wall)
                 if not self.moving:
-                    self.level.move_channel.unpause()
+                    if self.level.move_channel is not None:
+                        self.level.move_channel.unpause()
                     self.moving = True
                 self.moved = dirn
             speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
             self.vel[0] += dirn * speed
-        else:
+        elif self.on_ground:
             self.skew_v += dirn
 
     def jump (self, press):
@@ -116,7 +117,8 @@ class Player:
             self.level.add_ptcls('move', pos)
             if not self.moved:
                 self.moving = False
-                self.level.move_channel.pause()
+                if self.level.move_channel is not None:
+                    self.level.move_channel.pause()
         self.moved = False
         # gravity
         vx, vy = self.vel
@@ -229,14 +231,9 @@ class Level (object):
         self.clouds = []
         self.load_graphics()
         if event_handler is not None:
-            # load move sound
-            snd = pg.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
-            self.move_channel = c = pg.mixer.find_channel()
-            assert c is not None
-            c.set_volume(0)
-            c.play(snd, -1)
-            c.pause()
-            c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
+            self.move_channel = game.move_channel
+        else:
+            self.move_channel = None
         # load first level
         self.ID = None
         self.init(ID, cp)
@@ -315,7 +312,8 @@ class Level (object):
             self.init()
 
     def pause (self, *args):
-        self.move_channel.pause()
+        if self.move_channel is not None:
+            self.move_channel.pause()
         self.game.start_backend(ui.Paused)
         self.paused = True
 
@@ -435,7 +433,8 @@ class Level (object):
         pos = list(Rect(self.to_screen(self.player.rect)).center)
         self.add_ptcls('die', pos, dirn)
         # sound
-        self.move_channel.pause()
+        if self.move_channel is not None:
+            self.move_channel.pause()
         self.game.play_snd('die')
 
     def next_level (self):
@@ -447,7 +446,8 @@ class Level (object):
     def win (self):
         if self.winning:
             return
-        self.move_channel.pause()
+        if self.move_channel is not None:
+            self.move_channel.pause()
         self.winning = True
         self.start_fading(self.next_level)
 

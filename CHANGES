@@ -1,5 +1,6 @@
 release 2:
  * 6 extra levels (now 22 total), and changes to some existing levels
+ * level selection screen (once the game has been finished)
  * combine title screen and first level
  * increase contrast in some colours
  * performance improvements

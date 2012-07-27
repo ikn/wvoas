@@ -80,6 +80,14 @@ frame: the current target duration of a frame, in seconds.
         pygame.mixer.music.set_endevent(conf.EVENT_ENDMUSIC)
         self.find_music()
         self.play_music()
+        # load move sound
+        snd = pygame.mixer.Sound(conf.SOUND_DIR + 'move.ogg')
+        self.move_channel = c = pygame.mixer.find_channel()
+        assert c is not None
+        c.set_volume(0)
+        c.play(snd, -1)
+        c.pause()
+        c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
         # load display settings
         self.refresh_display()
         # start first backend

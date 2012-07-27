@@ -189,7 +189,7 @@ class LevelSelect (object):
     def draw (self, screen):
         levels = self.levels
         if self.dirty:
-            screen.fill((20, 10, 5))
+            screen.fill(conf.LS_BG_COLOUR)
         elif self.changed:
             levels = [levels[j] for j in self.changed]
             self.changed = False
@@ -199,10 +199,11 @@ class LevelSelect (object):
         current = self.current
         for i, rect, sfc in levels:
             whole_rect = rect.inflate(2, 2)
-            screen.fill((20, 10, 5), whole_rect)
+            screen.fill(conf.LS_BG_COLOUR, whole_rect)
             screen.blit(sfc, rect)
             if i == current:
-                draw_rect(screen, (190, 190, 80), whole_rect, 2)
+                draw_rect(screen, conf.LS_HL_COLOUR, whole_rect,
+                          conf.LS_HL_WIDTH)
             rects.append(whole_rect)
         if self.dirty:
             self.dirty = False
