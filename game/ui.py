@@ -1,10 +1,9 @@
 import pygame as pg
 from ext import evthandler as eh
 
+from conf import conf
 import level
-import conf
-
-ir = lambda x: int(round(x))
+from util import ir
 
 def split (size, intervals):
     """Split a region into integer-sized intervals.
@@ -79,7 +78,6 @@ the lines with their centres on the rect's borders.
 class LevelSelect (object):
     def __init__ (self, game, event_handler):
         self.game = game
-        self.event_handler = event_handler
         # input
         event_handler.add_event_handlers({
             pg.MOUSEBUTTONDOWN: self.click,
@@ -214,20 +212,14 @@ class LevelSelect (object):
 
 class Paused:
     def __init__ (self, game, event_handler):
-        self.game = game
-        self.event_handler = event_handler
         self.fade_counter = conf.PAUSE_FADE_TIME
         self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
         self.sfc = pg.display.get_surface().copy()
         self.text = game.img('paused.png')
         event_handler.add_key_handlers([
-            (conf.KEYS_BACK + conf.KEYS_NEXT, self.unpause, eh.MODE_ONDOWN)
+            (conf.KEYS_BACK + conf.KEYS_NEXT,
+             lambda *args: game.quit_backend(), eh.MODE_ONDOWN)
         ])
-        pg.mixer.music.set_volume(conf.PAUSED_MUSIC_VOLUME * .01)
-
-    def unpause (self, *args):
-        pg.mixer.music.set_volume(conf.MUSIC_VOLUME * .01)
-        self.game.quit_backend()
 
     def update (self):
         pass

@@ -5,11 +5,12 @@ import pygame as pg
 from pygame import Rect
 from ext import evthandler as eh
 
-import conf
+from conf import conf
+from util import ir
 import ui
 
-ir = lambda x: int(round(x))
 random0 = lambda: 2 * random() - 1
+
 
 def tile (screen, img, rect, ox = 0, oy = 0, full = None):
     # get offset
@@ -212,7 +213,6 @@ class Player:
 class Level (object):
     def __init__ (self, game, event_handler = None, ID = 0, cp = -1):
         self.game = game
-        self.event_handler = event_handler
         # input
         if event_handler is not None:
             event_handler.add_event_handlers({
