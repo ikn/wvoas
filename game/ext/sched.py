@@ -191,7 +191,7 @@ otherwise it is removed.
 
 """
         if seconds is not None:
-            frames = seconds * self.time.fps
+            frames = seconds * self.timer.fps
         frames = max(int(frames), 1)
         if repeat_seconds is not None:
             repeat_frames = repeat_seconds * self.timer.fps
@@ -214,7 +214,8 @@ otherwise it is removed.
     def _update (self):
         """Handle callbacks this frame."""
         rm = []
-        for i, (remain, total, cb, args) in self._cbs.iteritems():
+        # cbs might add/remove cbs, so use items instead of iteritems
+        for i, (remain, total, cb, args) in self._cbs.items():
             remain -= 1
             if remain == 0:
                 # call callback

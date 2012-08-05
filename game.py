@@ -715,6 +715,7 @@ if __name__ == '__main__':
                   type = 'int')
     op.add_option('-c', '--checkpoint', action = 'store', dest = 'cp',
                   type = 'int')
+    op.add_option('-i', '--level-select', action = 'store_true', dest = 'ls')
     op.add_option('-p', '--profile', action = 'store_true', dest = 'profile')
     op.add_option('-t', '--profile-time', action = 'store', dest = 'time',
                   type = 'int')
@@ -724,22 +725,25 @@ if __name__ == '__main__':
                   type = 'int')
     op.add_option('-s', '--sort-stats', action = 'store', dest = 'sort_stats',
                   type = 'string')
-    op.set_defaults(level = None, cp = None, time = conf.PROFILE_TIME,
+    op.set_defaults(cp = -1, ls = False, time = conf.PROFILE_TIME,
                     fn = conf.PROFILE_STATS_FILE,
                     num_stats = conf.PROFILE_NUM_STATS,
                     sort_stats = conf.PROFILE_STATS_SORT)
     options = op.parse_args()[0]
-    level_args = [options.level, options.cp]
-    missing_args = [arg is None for arg in level_args]
-    if all(missing_args):
+    level = options.level
+    if level is not None:
+        cls = Level
+        level_args = (level, options.cp)
+    elif options.ls:
         cls = LevelSelect
         level_args = ()
     else:
-        cls = Level
-        if missing_args[0]:
-            level_args[0] = 0
-        if missing_args[1]:
-            level_args[1] = -1
+        if conf.COMPLETED:
+            cls = LevelSelect
+            level_args = ()
+        else:
+            cls = Level
+            level_args = (conf.CURRENT_LEVEL,)
     if options.profile:
         # profile
         from cProfile import run as profile

@@ -90,6 +90,7 @@ class LevelSelect (object):
             (ks, [(self.move, (i,))], eh.MODE_ONDOWN_REPEAT, 15, 7)
              for i, ks in enumerate(conf.KEYS_MOVE)
         ])
+        game.linear_fade(*conf.LS_FADE_IN)
         # generate level thumbnails
         ids = conf.EXISTS
         self.num_levels = n = len(ids)
@@ -115,10 +116,9 @@ class LevelSelect (object):
             l.draw(draw_sfc)
             sfc = pg.transform.smoothscale(draw_sfc, rect[2:])
             # dim or brighten surface
-            c = (0, 0, 0, 150) if i in list(range(7)) + [12, 13, 19, 16] else (255, 255, 255, 30)
-            if i in list(range(7)) + [12, 13, 19, 16]:
+            if i in conf.COMPLETED_LEVELS:
                 mod_sfc = pg.Surface(rect[2:]).convert_alpha()
-                mod_sfc.fill(c)
+                mod_sfc.fill(conf.LS_WON_OVERLAY)
                 sfc.blit(mod_sfc, (0, 0))
             level_ids[i] = j
             levels.append((i, rect, sfc.convert()))
@@ -175,8 +175,14 @@ class LevelSelect (object):
         else:
             self.start_level()
 
+    def _start_level (self, *args):
+        self.game.switch_backend(*args)
+
     def start_level (self):
-        self.game.start_backend(level.Level, self.current)
+        g = self.game
+        g.linear_fade(*conf.LS_FADE_OUT, persist = True)
+        g.scheduler.add_timeout(self._start_level, (level.Level, self.current),
+                                seconds = conf.LS_LEVEL_START_TIME)
 
     def update (self):
         if self.current != self.last_current:

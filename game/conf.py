@@ -12,11 +12,11 @@ from util import dd
 class Conf:
 
     IDENT = 'wvoas'
-    USE_SAVEDATA = False
+    USE_SAVEDATA = True
     USE_FONTS = False
 
     # save data
-    SAVE = ()
+    SAVE = ('CURRENT_LEVEL', 'COMPLETED_LEVELS', 'COMPLETED')
     # need to take care to get unicode path
     if system() == 'Windows':
         try:
@@ -287,12 +287,19 @@ class Conf:
     for l in _properties.itervalues():
         l.pop(0)
     del _properties
+    CURRENT_LEVEL = 0
+    COMPLETED_LEVELS = []
+    COMPLETED = False
 
     # graphics
     # level select
     LS_BG_COLOUR = (120, 120, 120)
     LS_HL_COLOUR = (150, 150, 0)
     LS_HL_WIDTH = 2
+    LS_FADE_IN = ((0, 0, 0), (False, 1.5))
+    LS_FADE_OUT = (False, ((0, 0, 0), 1.5))
+    LS_LEVEL_START_TIME = 2
+    LS_WON_OVERLAY = (0, 0, 0, 150)
     # images
     DEFAULT_BGS = ('bg',)
     BGS = DEFAULT_BGS + sum((l.get('bgs', ()) for l in LEVELS), ())
