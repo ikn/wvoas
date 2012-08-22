@@ -9,7 +9,7 @@ import settings
 from util import dd
 
 
-class Conf:
+class Conf (object):
 
     IDENT = 'wvoas'
     USE_SAVEDATA = True
@@ -363,7 +363,6 @@ def translate_dd (d):
     if isinstance(d, defaultdict):
         return defaultdict(d.default_factory, d)
     else:
-        print d
         # should be (default, dict)
         return dd(*d)
 conf = dict((k, v) for k, v in Conf.__dict__.iteritems()

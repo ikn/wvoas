@@ -84,7 +84,7 @@ class LevelSelect (object):
             pg.MOUSEMOTION: self.set_current_from_mouse
         })
         event_handler.add_key_handlers([
-            (conf.KEYS_BACK, lambda *args: game.quit_backend(), eh.MODE_ONDOWN),
+            (conf.KEYS_BACK, self.quit, eh.MODE_ONDOWN),
             (conf.KEYS_NEXT, self.select, eh.MODE_ONDOWN),
         ] + [
             (ks, [(self.move, (i,))], eh.MODE_ONDOWN_REPEAT, 15, 7)
@@ -136,6 +136,7 @@ class LevelSelect (object):
         self.changed = False
         self.set_current_from_mouse()
         self.vertical_order = sum([[row[i] for row in vertical_order if len(row) > i] for i in xrange(cols)], [])
+        self.finished = False
 
     def set_current_from_mouse (self, evt = None):
         if evt is None:
@@ -152,9 +153,11 @@ class LevelSelect (object):
                 self.last = current
 
     def click (self, evt):
-        self.set_current_from_mouse()
-        if self.current is not None:
-            self.start_level()
+        # don't want scroll wheel to work
+        if evt.button in (1, 2, 3):
+            self.set_current_from_mouse()
+            if self.current is not None:
+                self.start_level()
 
     def move (self, key, mode, mods, i):
         if self.current is None:
@@ -183,6 +186,11 @@ class LevelSelect (object):
         g.linear_fade(*conf.LS_FADE_OUT, persist = True)
         g.scheduler.add_timeout(self._start_level, (level.Level, self.current),
                                 seconds = conf.LS_LEVEL_START_TIME)
+        self.finished = True
+
+    def quit (self, *args):
+        if not self.finished:
+            self.game.quit_backend()
 
     def update (self):
         if self.current != self.last_current:
@@ -217,15 +225,32 @@ class LevelSelect (object):
 
 
 class Paused:
-    def __init__ (self, game, event_handler):
+    def __init__ (self, game, event_handler, level):
+        self.game = game
+        self.level = level
         self.fade_counter = conf.PAUSE_FADE_TIME
         self.fade_sfc = pg.Surface(conf.RES).convert_alpha()
         self.sfc = pg.display.get_surface().copy()
-        self.text = game.img('paused.png')
-        event_handler.add_key_handlers([
+        self.texts = [game.img('paused.png')]
+        key_handlers = [
             (conf.KEYS_BACK + conf.KEYS_NEXT,
              lambda *args: game.quit_backend(), eh.MODE_ONDOWN)
-        ])
+        ]
+        if conf.COMPLETED:
+            self.texts.append(game.img('paused-back.png'))
+            key_handlers.append(((pg.K_b,), self.back, eh.MODE_ONDOWN))
+        else:
+            self.texts.append(game.img('paused-skip.png'))
+            key_handlers.append(((pg.K_s,), self.skip, eh.MODE_ONDOWN))
+        event_handler.add_key_handlers(key_handlers)
+
+    def back (self, *args):
+        self.game.quit_backend()
+        self.game.switch_backend(LevelSelect)
+
+    def skip (self, *args):
+        self.game.quit_backend()
+        self.level.next_level()
 
     def update (self):
         pass
@@ -237,9 +262,8 @@ class Paused:
             alpha = conf.PAUSE_FADE_RATE * float(t) / conf.PAUSE_FADE_TIME
             alpha = min(255, ir(alpha))
             self.fade_sfc.fill((0, 0, 0, alpha))
-            screen.blit(self.sfc, (0, 0))
-            screen.blit(self.fade_sfc, (0, 0))
-            screen.blit(self.text, (0, 0))
+            for sfc in [self.sfc, self.fade_sfc] + self.texts:
+                screen.blit(sfc, (0, 0))
             # update counter
             self.fade_counter -= 1
             if self.fade_counter <= 0:

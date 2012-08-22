@@ -32,6 +32,10 @@ types: the types of settings are preserved when changes are made by casting to
 
 To restore a setting to its default value, delete it.
 
+    METHODS
+
+dump
+
 """
 
     def __init__ (self, settings, types):
@@ -67,6 +71,7 @@ To restore a setting to its default value, delete it.
         setattr(self, k, self._defaults[k])
 
     def dump (self):
+        """Force saving all settings."""
         pass
 
 
@@ -98,7 +103,11 @@ save: a list containing the names of the settings to save to fn (others are
         try:
             with open(fn) as f:
                 settings = json.load(f)
-        except (IOError, ValueError):
+        except IOError:
+            print 'warning: can\'t read file: \'{0}\''.format(self._fn)
+            settings = {}
+        except ValueError:
+            print 'warning: invalid JSON: \'{0}\''.format(self._fn)
             settings = {}
         for k, v in settings.iteritems():
             if k in save:
@@ -117,6 +126,7 @@ save: a list containing the names of the settings to save to fn (others are
             self.dump()
 
     def dump (self):
+        """Force saving all settings."""
         try:
             with open(self._fn, 'w') as f:
                 json.dump(self._save, f, indent = 4, cls = JSONEncoder)

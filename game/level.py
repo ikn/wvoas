@@ -314,7 +314,7 @@ class Level (object):
     def pause (self, *args):
         if self.move_channel is not None:
             self.move_channel.pause()
-        self.game.start_backend(ui.Paused)
+        self.game.start_backend(ui.Paused, self)
         self.paused = True
 
     def reset (self, *args):
@@ -437,23 +437,31 @@ class Level (object):
             self.move_channel.pause()
         self.game.play_snd('die')
 
+    def next_level (self, save = True, progress = True):
+        i = self.ID
+        if not conf.COMPLETED and i + 1 in conf.EXISTS:
+            # there's a next level
+            if save:
+                conf.CURRENT_LEVEL = i + 1
+            if progress:
+                self.init(i + 1)
+        else:
+            if save:
+                conf.COMPLETED = True
+            if progress:
+                self.game.switch_backend(ui.LevelSelect)
+
     def win (self):
         if self.winning:
             return
         if self.move_channel is not None:
             self.move_channel.pause()
         self.winning = True
-        i = self.ID
-        if not conf.COMPLETED and i + 1 in conf.EXISTS:
-            # there's a next level
-            f = lambda: self.init(i + 1)
-            conf.CURRENT_LEVEL = i + 1
-        else:
-            f = lambda: self.game.switch_backend(ui.LevelSelect)
-            conf.COMPLETED = True
-        conf.COMPLETED_LEVELS.append(i)
+        self.next_level(progress = False)
+        if self.ID not in conf.COMPLETED_LEVELS:
+            conf.COMPLETED_LEVELS.append(self.ID)
         conf.dump()
-        self.start_fading(f)
+        self.start_fading(lambda: self.next_level(False))
 
     def update (self):
         # fade counter
