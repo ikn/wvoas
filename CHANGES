@@ -5,6 +5,7 @@ release 2:
  * pause menu options: skip level, back to menu
  * performance improvements
  * slime wobbles and squashes
+ * restrict window position to just off the screen
  * increase contrast in some colours
  * code cleanup, gameplay tweaks, bug fixes
 

@@ -24,7 +24,9 @@ default_dict: the created defaultdict.
 
 def ir (x):
     """Returns the argument rounded to the nearest integer."""
-    return int(round(x))
+    # this is about twice as fast as int(round(x))
+    y = int(x)
+    return (y + (x - y >= .5)) if x > 0 else (y - (y - x >= .5))
 
 
 # graphics

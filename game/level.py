@@ -227,7 +227,11 @@ class Level (object):
                 (ks, [(self.move, (i,))], eh.MODE_HELD)
                 for i, ks in enumerate((conf.KEYS_LEFT, conf.KEYS_RIGHT))
             ])
-        self.centre = (conf.RES[0] / 2, conf.RES[1] / 2)
+        w, h = conf.RES
+        self.centre = (w / 2, h / 2)
+        ww, wh = conf.WINDOW_SIZE
+        border = (2 * (ww + 5), 2 * (wh + 5))
+        self.window_bds = pg.Rect(0, 0, w, h).inflate(border)
         self.clouds = []
         self.load_graphics()
         if event_handler is not None:
@@ -485,12 +489,16 @@ class Level (object):
         else:
             x, y = pg.mouse.get_pos()
             dx, dy = x - x0, y - y0
+            # don't move too far outside the screen
+            w_moved = w.move(dx, dy).clamp(self.window_bds)
+            dx, dy = w_moved[0] - w[0], w_moved[1] - w[1]
         pg.mouse.set_pos(x0, y0)
         wx0, wy0, ww, wh = self.total_window = w.union(w.move(dx, dy))
         # move window
         if self.dying:
             # just move window
             w.move_ip(dx, dy)
+            w.clamp_ip(self.window_bds)
             self.update_rects()
         else:
             self.vert_dirn = 3
