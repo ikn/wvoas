@@ -182,11 +182,12 @@ class LevelSelect (object):
         self.game.switch_backend(*args)
 
     def start_level (self):
-        g = self.game
-        g.linear_fade(*conf.LS_FADE_OUT, persist = True)
-        g.scheduler.add_timeout(self._start_level, (level.Level, self.current),
-                                seconds = conf.LS_LEVEL_START_TIME)
-        self.finished = True
+        if not self.finished:
+            g = self.game
+            g.linear_fade(*conf.LS_FADE_OUT, persist = True)
+            g.scheduler.add_timeout(self._start_level, (level.Level, self.current),
+                                    seconds = conf.LS_LEVEL_START_TIME)
+            self.finished = True
 
     def quit (self, *args):
         if not self.finished:
