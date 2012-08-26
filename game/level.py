@@ -498,7 +498,6 @@ class Level (object):
         if self.dying:
             # just move window
             w.move_ip(dx, dy)
-            w.clamp_ip(self.window_bds)
             self.update_rects()
         else:
             self.vert_dirn = 3
