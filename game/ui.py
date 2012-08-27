@@ -92,7 +92,7 @@ class LevelSelect (object):
         ])
         game.linear_fade(*conf.LS_FADE_IN)
         # generate level thumbnails
-        ids = conf.EXISTS
+        ids = set(conf.EXISTS + conf.UNLOCKED)
         self.num_levels = n = len(ids)
         self.cols = cols = min(i for i in xrange(n + 1) if i * i >= n)
         self.rows = rows = n / cols + bool(n % cols)

@@ -44,6 +44,11 @@ and Dvorak (,AOE P) keyboard layouts too.
 
 To quit, close the window.
 
+    FILES
+
+This game saves settings in ~/.config/wvoas/config on Unix-like OSs, and in
+%APPDATA\wvoas\conf on Windows.
+
     LICENSING
 
 Source code is available under the GNU General Public License, version 3

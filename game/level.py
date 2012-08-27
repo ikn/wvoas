@@ -6,6 +6,7 @@ from pygame import Rect
 from ext import evthandler as eh
 
 from conf import conf
+from obj import Player, Star
 from util import ir
 import ui
 
@@ -34,180 +35,6 @@ def tile (screen, img, rect, ox = 0, oy = 0, full = None):
             screen.blit(img, (x, y), (this_ox, this_oy, w, h))
             y += h
         x += w
-
-
-class Player:
-    def __init__ (self, level, pos):
-        self.level = level
-        w, h = level.game.img('player.png').get_size()
-        self.img_size = (w / (conf.PLAYER_MAX_SKEW + 1), h / 2)
-        self.rect = list(pos) + list(conf.PLAYER_SIZE)
-        self.old_rect = list(self.rect)
-        ox, oy = conf.PLAYER_OFFSET
-        p = (ir(self.rect[0]) + ox, ir(self.rect[1]) + oy)
-        self.old_rect_img = self.rect_img = Rect(p, self.img_size)
-        self.vel = [0, 0]
-        self.on_ground = 0
-        self.can_jump = level.ID in conf.CAN_JUMP
-        self.jumping = 0
-        self.jumped = False
-        self.can_move = level.ID in conf.CAN_MOVE
-        self.moving = False
-        self.moved = False
-        if level.move_channel is not None:
-            level.move_channel.pause()
-        self.img = level.game.img('player.png')
-        self.sfc = pg.Surface(self.img_size).convert_alpha()
-        self.skew_v = 0
-        self.skew = 0
-        self.last_skew = None
-        self.squash_v = [0, 0, 0, 0]
-        self.squash = [0, 0, 0, 0]
-        self.last_scale = None
-
-    def impact (self, axis, v = None, dv = None):
-        if dv is None:
-            dv = v - self.vel[axis]
-        # velocity
-        self.vel[axis] += dv
-        # squash
-        self.squash_v[axis + (2 if dv > 0 else 0)] += abs(dv)
-        # sound
-        vol = abs(dv)
-        if vol >= conf.HIT_VOL_THRESHOLD:
-            self.level.game.play_snd('hit', vol)
-
-    def move (self, dirn):
-        dirn = 1 if dirn else -1
-        if self.can_move:
-            vx = self.vel[0]
-            if abs(vx) > 1 and (vx > 0) == (dirn > 0) and self.on_ground:
-                # actually moving along the ground (not against a wall)
-                if not self.moving:
-                    if self.level.move_channel is not None:
-                        self.level.move_channel.unpause()
-                    self.moving = True
-                self.moved = dirn
-            speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
-            self.vel[0] += dirn * speed
-        elif self.on_ground:
-            self.skew_v += dirn
-
-    def jump (self, press):
-        if press:
-            if self.on_ground and not self.jumping:
-                if self.can_jump:
-                    self.impact(1, dv = -conf.INITIAL_JUMP)
-                    self.jumping = conf.JUMP_TIME
-                    self.on_ground = 0
-                    pos = Rect(self.level.to_screen(self.rect)).midbottom
-                    self.level.add_ptcls('jump', pos)
-                else:
-                    self.squash_v[1] -= conf.INITIAL_JUMP
-                    self.level.game.play_snd('hit', conf.INITIAL_JUMP)
-        elif self.jumping:
-            self.jumped = True
-
-    def update (self):
-        skew_v = self.skew_v
-        if self.moving:
-            # skew
-            skew_v -= self.moved
-            # particles
-            pos = Rect(self.level.to_screen(self.rect)).midbottom
-            self.level.add_ptcls('move', pos)
-            if not self.moved:
-                self.moving = False
-                if self.level.move_channel is not None:
-                    self.level.move_channel.pause()
-        self.moved = False
-        # gravity
-        vx, vy = self.vel
-        vy += conf.GRAV
-        # friction
-        if self.on_ground:
-            vx *= 1 - conf.FRICT
-        # air resistance
-        dx = 1 if vx > 0 else -1
-        vx -= dx * conf.AIR_RES * vx ** 2
-        vx = dx * max(dx * vx, 0)
-        dy = 1 if vy > 0 else -1
-        vy -= dy * conf.AIR_RES * vy ** 2
-        vy = dy * max(dy * vy, 0)
-        # jump
-        if self.jumped:
-            vy -= conf.CONTINUE_JUMP
-        self.jumped = False
-        # move
-        self.vel = [vx, vy]
-        self.rect[0] += vx
-        self.rect[1] += vy
-        # set if on ground
-        if self.on_ground:
-            self.on_ground -= 1
-        if self.jumping:
-            self.jumping -= 1
-        # skew
-        skew_v *= conf.PLAYER_SKEW_ELAST
-        skew_v -= conf.PLAYER_SKEW_STIFFNESS * self.skew
-        self.skew += skew_v
-        self.skew_v = skew_v
-        # squash
-        squash_v = self.squash_v
-        squash = self.squash
-        e = conf.PLAYER_SQUASH_ELAST
-        k = conf.PLAYER_SQUASH_STIFFNESS
-        for i in xrange(4):
-            squash_v[i] *= e
-            squash_v[i] -= k * squash[i]
-            squash[i] += squash_v[i]
-
-    def pre_draw (self):
-        ox, oy = conf.PLAYER_OFFSET
-        x, y = (ir(self.rect[0]) + ox, ir(self.rect[1]) + oy)
-        w0, h0 = self.img_size
-        # copy image to use to sfc
-        skew = ir(self.skew)
-        skew = (1 if skew > 0 else -1) * min(abs(skew), conf.PLAYER_MAX_SKEW)
-        sfc = self.sfc
-        if skew != self.last_skew:
-            sfc.fill((0, 0, 0, 0))
-            sfc.blit(self.img, (0, 0), (w0 * abs(skew), h0 if skew > 0 else 0, w0, h0))
-            self.last_scale = None
-            self.last_skew = skew
-        # scale
-        x0, y0, x1, y1 = self.squash
-        w = w0 - x0 - x1
-        h = h0 - y0 - y1
-        # constrain scale factor
-        mn, mx = conf.PLAYER_MIN_SQUASH, conf.PLAYER_MAX_SQUASH
-        wb = min(max(w, mn * w0), mx * w0)
-        hb = min(max(h, mn * h0), mx * h0)
-        # adjust blit location if constrained
-        if wb != w:
-            assert x0 + x1 != 0
-            x0 -= (wb - w) * x0 / (x0 + x1)
-        if hb != h:
-            assert y0 + y1 != 0
-            y0 -= (hb - h) * y0 / (y0 + y1)
-        self.rect_img = pg.Rect(x + ir(x0), y + ir(y0), ir(wb), ir(hb))
-
-    def update_vel (self):
-        o, r, v = self.old_rect, self.rect, self.vel
-        d = conf.LAUNCH_SPEED
-        v[0] += d * (r[0] - o[0] - v[0])
-        v[1] += d * (r[1] - o[1] - v[1])
-
-    def draw (self, screen):
-        x, y, w, h = self.rect_img
-        if self.last_scale == (w, h):
-            sfc = self.last_sfc
-        else:
-            self.last_scale = (w, h)
-            self.last_sfc = sfc = pg.transform.smoothscale(self.sfc, (w, h))
-        screen.blit(sfc, (x, y))
-        self.old_rect = list(self.rect)
-        self.old_rect_img = self.rect_img
 
 
 class Level (object):
@@ -303,6 +130,9 @@ class Level (object):
         self.goal = Rect(data['goal'] + conf.GOAL_SIZE)
         self.goal_img = self.goal.move(conf.GOAL_OFFSET)
         self.goal_img.size = self.imgs['goal'].get_size()
+        # stars
+        self.stars = [Star(self, p, [ID, i] in conf.STARS)
+                      for i, p in enumerate(data.get('stars', []))]
         # rects
         self.all_rects = [Rect(r) for r in data.get('rects', [])]
         self.all_vrects = [Rect(r) for r in data.get('vrects', [])]
@@ -617,6 +447,12 @@ class Level (object):
         for c in self.checkpoints[self.current_cp + 1:]:
             if w.clip(c) and self.get_clip(p, c):
                 self.current_cp += 1
+        # check if at stars
+        for i, s in enumerate(self.stars):
+            if not s.got and w.clip(s.rect) and self.get_clip(p, s.rect):
+                s.got = True
+                conf.STARS.append([self.ID, i])
+                conf.dump()
 
     def load_graphics (self):
         self.imgs = imgs = {}
@@ -733,6 +569,10 @@ class Level (object):
             tile(screen, img, r)
         # goal
         screen.blit(imgs['goal'], self.goal_img)
+        # stars
+        for s in self.stars:
+            if not s.got:
+                s.draw(screen, (0, 0))
         # player
         if not self.dying:
             pl.draw(screen)

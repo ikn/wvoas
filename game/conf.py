@@ -6,7 +6,7 @@ from collections import defaultdict
 import pygame as pg
 
 import settings
-from util import ir, dd
+from util import ir, dd, split
 
 
 class Conf (object):
@@ -16,7 +16,8 @@ class Conf (object):
     USE_FONTS = False
 
     # save data
-    SAVE = ('CURRENT_LEVEL', 'COMPLETED_LEVELS', 'COMPLETED', 'VOL_MUL')
+    SAVE = ('CURRENT_LEVEL', 'COMPLETED_LEVELS', 'COMPLETED', 'STARS',
+            'VOL_MUL')
     # need to take care to get unicode path
     if system() == 'Windows':
         try:
@@ -112,6 +113,7 @@ class Conf (object):
     AIR_RES = .0025
     GOAL_SIZE = (5, 60)
     CHECKPOINT_SIZE = (10, 10)
+    STAR_SIZE = (10, 10)
     HALF_WINDOW_SIZE = (125, 75)
     WINDOW_SIZE = [x * 2 for x in HALF_WINDOW_SIZE]
     ERR = 10 ** -10
@@ -221,9 +223,10 @@ class Conf (object):
     }, {
         'player_pos': (322, 265),
         'goal': (428, 135),
+        'stars': [(400, 400)],
         'rects': [(380, 195, 95, 75), (475, 195, 105, 55), (583, 245, 97, 55),
                   (480, 295, 100, 50)],
-        'vrects': [(480, 245, 97, 50), (580, 295, 100, 50)],
+        'vrects': [(480, 245, 97, 50), (580, 295, 100, 100)],
         'arects': [(280, 295, 200, 50)]
     }, {
         'player_pos': (53, 480),
@@ -232,7 +235,7 @@ class Conf (object):
         'rects': [(0, 510, 960, 30), (185, 50, 15, 260), (685, 50, 15, 160)],
         'vrects': [(185, 310, 15, 200), (0, 110, 15, 200),
                    (685, 210, 15, 300)],
-        'arects': [(0, 0, 450, 10), (200, 50, 50, 460), (450, 0, 50, 460),
+        'arects': [(0, -90, 450, 100), (200, 50, 50, 460), (450, 0, 50, 460),
                    (700, 50, 50, 460)]
     },
         'disable move',
@@ -272,17 +275,20 @@ class Conf (object):
                    (650, 410, 310, 50), (800, 80, 160, 330),
                    (100, 160, 700, 40)]
     },
-        'enable move',
+        'disable jump',
         'disable exists',
     {
         'player_pos': (473, 255),
         'goal': (500, -100),
         'vrects': [(0, 0, 960, 540)]
-    }, {
+    },
+        'enable jump',
+        'enable move',
+    {
         'player_pos': (100, 470),
         'goal': (860, 440),
         'vrects': [(0, 500, 960, 10)],
-        'arects': [(0, 510, 960, 30), (455, 300, 50, 210)]
+        'arects': [(0, 510, 960, 30), (455, 200, 50, 310)]
     }]
     # compile some properties
     CAN_JUMP = [True]
@@ -317,6 +323,21 @@ class Conf (object):
     CURRENT_LEVEL = 0
     COMPLETED_LEVELS = []
     COMPLETED = False
+    STARS = []
+    # generate unlocked list
+    n_stars = sum(len(lvl.get('stars', [])) for lvl in LEVELS)
+    got_stars = 0
+    for ID, i in STARS:
+        if len(LEVELS) > ID and len(LEVELS[ID].get('stars')) > i:
+            got_stars += 1
+    secret = [i for i in xrange(len(LEVELS)) if i not in EXISTS]
+    require = split(n_stars, len(secret))
+    UNLOCKED = []
+    req = 0
+    for ID, this_req in zip(secret, require):
+        req += this_req
+        if got_stars >= req:
+            UNLOCKED.append(ID)
 
     # graphics
     # level select
@@ -346,6 +367,7 @@ class Conf (object):
     PLAYER_SKEW_STIFFNESS = .1
     PLAYER_MAX_SKEW = 4
     GOAL_OFFSET = (-17, -2)
+    STAR_PULSE_SPEED = .005
     VOID_JITTER_X = 10
     VOID_JITTER_Y = 10
     VOID_JITTER_T = 5
