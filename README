@@ -35,6 +35,10 @@ mouse movement: move the visible window.
 R: reset the level.
 +, -: increase/decrease volume.
 
+Levels can be skipped from the pause screen by pressing the highlighted letter.
+Once the game has been finished, you can return to the level select screen in
+the same way.
+
 WASD to move and R to reset are in the same position for the AZERTY (ZQSD R)
 and Dvorak (,AOE P) keyboard layouts too.
 
@@ -42,7 +46,8 @@ To quit, close the window.
 
     LICENSING
 
-Source code is available under the new BSD license (included).
+Source code is available under the GNU General Public License, version 3
+(included).
 
 Images are available under the Creative Commons CC0 license:
     https://creativecommons.org/publicdomain/zero/1.0/
