@@ -29,15 +29,17 @@ if conf.USE_FONTS:
 
 
 def get_backend_id (backend):
-    """Return the computed identifier of the given backend.
+    """Return the computed identifier of the given backend (or backend type).
 
 See Game.create_backend for details.
 
 """
-    try:
+    if hasattr(backend, 'id'):
         return backend.id
-    except AttributeError:
-        return type(backend).__name__.lower()
+    else:
+        if not isinstance(backend, type):
+            backend = type(backend)
+        return backend.__name__.lower()
 
 
 class Game (object):
@@ -110,7 +112,7 @@ music: filenames for known music.
         c.set_volume(0)
         c.play(snd, -1)
         c.pause()
-        c.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1) * .01)
+        c.set_volume(conf.VOL_MUL * conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1))
         # start first backend
         self.backends = []
         self._last_overlay = False
@@ -150,7 +152,7 @@ music: filenames for known music.
             for k, v in conf.REQUIRED_FONTS[i].iteritems():
                 fonts[k] = v
         pg.mouse.set_visible(conf.MOUSE_VISIBLE[i])
-        pg.mixer.music.set_volume(conf.MUSIC_VOLUME[i])
+        pg.mixer.music.set_volume(conf.VOL_MUL * conf.MUSIC_VOLUME[i])
 
     def create_backend (self, cls, *args, **kwargs):
         """Create a backend.
@@ -191,6 +193,9 @@ backend should use for input, and is stored in its event_handler attribute.
 
 """
         # create event handler for this backend
+        v = conf.VOL_CHANGE_AMOUNT
+        r = (eh.MODE_ONDOWN_REPEAT, conf.VOL_REPEAT_DELAY,
+             conf.VOL_REPEAT_RATE)
         h = eh.MODE_HELD
         event_handler = eh.EventHandler({
             pg.ACTIVEEVENT: self._active_cb,
@@ -198,12 +203,20 @@ backend should use for input, and is stored in its event_handler attribute.
             conf.EVENT_ENDMUSIC: self.play_music
         }, [
             (conf.KEYS_FULLSCREEN, self.toggle_fullscreen, eh.MODE_ONDOWN),
-            (conf.KEYS_MINIMISE, self.minimise, eh.MODE_ONDOWN)
+            (conf.KEYS_MINIMISE, self.minimise, eh.MODE_ONDOWN),
+            (conf.KEYS_VOL_UP, [(self._ch_vol, (v,))]) + r,
+            (conf.KEYS_VOL_DOWN, [(self._ch_vol, (-v,))]) + r
         ], False, self.quit)
         # instantiate class
         backend = cls(self, event_handler, *args)
         backend.event_handler = event_handler
         return backend
+
+    def _ch_vol (self, key, mode, mods, amount):
+        i = get_backend_id(self.backend)
+        v = max(0, min(1, conf.VOL_MUL + amount))
+        conf.VOL_MUL = v
+        pg.mixer.music.set_volume(v * conf.MUSIC_VOLUME[i])
 
     def start_backend (self, *args, **kwargs):
         """Start a new backend.
@@ -364,7 +377,7 @@ volume: float to scale volume by.
         if snd.get_length() < 10 ** -3:
             # no way this is valid
             return
-        snd.set_volume(conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get(base_ID, 1) * volume)
+        snd.set_volume(conf.VOL_MUL * conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get(base_ID, 1) * volume)
         snd.play()
 
     def find_music (self):

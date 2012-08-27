@@ -225,7 +225,7 @@ class LevelSelect (object):
             return rects
 
 
-class Paused:
+class Paused (object):
     def __init__ (self, game, event_handler, level):
         self.game = game
         self.level = level

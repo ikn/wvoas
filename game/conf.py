@@ -6,7 +6,7 @@ from collections import defaultdict
 import pygame as pg
 
 import settings
-from util import dd
+from util import ir, dd
 
 
 class Conf (object):
@@ -16,7 +16,7 @@ class Conf (object):
     USE_FONTS = False
 
     # save data
-    SAVE = ('CURRENT_LEVEL', 'COMPLETED_LEVELS', 'COMPLETED')
+    SAVE = ('CURRENT_LEVEL', 'COMPLETED_LEVELS', 'COMPLETED', 'VOL_MUL')
     # need to take care to get unicode path
     if system() == 'Windows':
         try:
@@ -77,14 +77,21 @@ class Conf (object):
     KEYS_MOVE = (KEYS_LEFT, KEYS_UP, KEYS_RIGHT, KEYS_DOWN)
     KEYS_JUMP = (pg.K_SPACE,) + KEYS_UP
     KEYS_RESET = (pg.K_r, pg.K_p)
+    KEYS_VOL_UP = ((pg.K_PLUS, 0, True), (pg.K_KP_PLUS, 0, True),
+                   (pg.K_EQUALS, 0, True))
+    KEYS_VOL_DOWN = ((pg.K_MINUS, 0, True), (pg.K_KP_MINUS, 0, True))
 
     # audio
-    MUSIC_VOLUME = dd(.7, paused = .2)
-    SOUND_VOLUME = .5
+    MUSIC_VOLUME = dd(1, paused = .3)
+    SOUND_VOLUME = 1
     EVENT_ENDMUSIC = pg.USEREVENT
     SOUNDS = {'hit': 10, 'die': 4}
-    SOUND_VOLUMES = {'hit': 1. / 13, 'die': 2, 'move': .5}
+    SOUND_VOLUMES = {'hit': .04, 'die': 1, 'move': .4}
     HIT_VOL_THRESHOLD = 2 # before scaling
+    VOL_MUL = .6
+    VOL_CHANGE_AMOUNT = .1
+    VOL_REPEAT_DELAY = ir(FPS[None] * .5)
+    VOL_REPEAT_RATE = ir(FPS[None] * .2)
 
     # gameplay (sizes must be ints)
     PLAYER_SIZE = (15, 30)

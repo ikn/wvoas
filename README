@@ -33,6 +33,7 @@ escape, backspace: pause.
 escape, backspace, space, enter: unpause.
 mouse movement: move the visible window.
 R: reset the level.
++, -: increase/decrease volume.
 
 WASD to move and R to reset are in the same position for the AZERTY (ZQSD R)
 and Dvorak (,AOE P) keyboard layouts too.
