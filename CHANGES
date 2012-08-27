@@ -4,7 +4,8 @@ release 2:
  * combine title screen and first level
  * pause menu options: skip level, back to menu
  * performance improvements
- * slime wobbles and squashes
+ * unlockables
+ * slime wobbles and squashes and has features
  * restrict window position to just off the screen
  * increase contrast in some colours
  * code cleanup, gameplay tweaks, bug fixes

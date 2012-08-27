@@ -1,3 +1,5 @@
+from random import expovariate
+
 import pygame as pg
 from pygame import Rect
 
@@ -26,8 +28,10 @@ class Player (object):
         if level.move_channel is not None:
             level.move_channel.pause()
         self.img = level.game.img('player.png')
-        self.f_img = level.game.img('player-features.png')
-        self.f_img_reversed = pg.transform.flip(self.f_img, True, False)
+        self.f_imgs = [level.game.img('player-features.png'),
+                       level.game.img('player-features-blinking.png')]
+        self.f_imgs = [(img, pg.transform.flip(img, True, False))
+                       for img in self.f_imgs]
         self.sfc = pg.Surface(self.img_size).convert_alpha()
         self.dirn = True
         self.last_dirn = None
@@ -37,6 +41,8 @@ class Player (object):
         self.squash_v = [0, 0, 0, 0]
         self.squash = [0, 0, 0, 0]
         self.last_scale = None
+        self.blinking = -1
+        self.last_blinking = None
 
     def impact (self, axis, v = None, dv = None):
         if dv is None:
@@ -135,6 +141,13 @@ class Player (object):
             squash_v[i] *= e
             squash_v[i] -= k * squash[i]
             squash[i] += squash_v[i]
+        # blink (< 0 means blinking, > 0 not)
+        b = self.blinking
+        if b in (1, -1):
+            b = -b * (2 + int(expovariate(.3 if b == 1 else .002)))
+        else:
+            b -= 1 if b > 0 else -1
+        self.blinking = b
 
     def pre_draw (self):
         ox, oy = conf.PLAYER_OFFSET
@@ -145,21 +158,23 @@ class Player (object):
         dirn = self.dirn
         skew = ir(self.skew)
         skew = (1 if skew > 0 else -1) * min(abs(skew), conf.PLAYER_MAX_SKEW)
-        if skew != self.last_skew or dirn != self.last_dirn:
+        blinking = self.blinking
+        if skew != self.last_skew or dirn != self.last_dirn \
+           or (blinking < 0) != self.last_blinking:
             sfc.fill((0, 0, 0, 0))
             x0, y0 = w0 * abs(skew), h0 if skew > 0 else 0
             sfc.blit(self.img, (0, 0), (x0, y0, w0, h0))
+            f_img = self.f_imgs[blinking < 0][dirn]
             if dirn:
                 # facing right
-                f_img = self.f_img_reversed
                 x0 = w0 * (conf.PLAYER_MAX_SKEW - abs(skew))
                 # use opposite skew
                 y0 = 0 if skew > 0 else h0
-            else:
-                f_img = self.f_img
             sfc.blit(f_img, (0, 0), (x0, y0, w0, h0))
             self.last_scale = None
             self.last_skew = skew
+            self.last_dirn = dirn
+            self.last_blinking = blinking < 0
         # scale
         x0, y0, x1, y1 = self.squash
         w = w0 - x0 - x1
