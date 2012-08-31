@@ -43,6 +43,7 @@ class Player (object):
         self.last_scale = None
         self.blinking = -1
         self.last_blinking = None
+        self.to_move = 0
 
     def impact (self, axis, v = None, dv = None):
         if dv is None:
@@ -68,8 +69,7 @@ class Player (object):
                         self.level.move_channel.unpause()
                     self.moving = True
                 self.moved = dirn
-            speed = conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED
-            self.vel[0] += dirn * speed
+            self.to_move += dirn
         elif self.on_ground:
             self.skew_v += dirn
 
@@ -101,6 +101,11 @@ class Player (object):
                 if self.level.move_channel is not None:
                     self.level.move_channel.pause()
         self.moved = False
+        # apply movement
+        v = self.to_move
+        if v:
+            self.vel[0] += (v / abs(v)) * (conf.PLAYER_SPEED if self.on_ground else conf.PLAYER_AIR_SPEED)
+            self.to_move = 0
         # gravity
         vx, vy = self.vel
         vy += conf.GRAV
