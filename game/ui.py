@@ -91,8 +91,22 @@ class LevelSelect (object):
              for i, ks in enumerate(conf.KEYS_MOVE)
         ])
         game.linear_fade(*conf.LS_FADE_IN)
+        # generate unlocked list
+        unlocked = []
+        n_stars = sum(len(lvl.get('stars', [])) for lvl in conf.LEVELS)
+        got_stars = 0
+        for ID, i in conf.STARS:
+            if len(conf.LEVELS) > ID and len(conf.LEVELS[ID].get('stars', [])) > i:
+                got_stars += 1
+        secret = [i for i in xrange(len(conf.LEVELS)) if i not in conf.EXISTS]
+        require = split(n_stars, len(secret))
+        req = 0
+        for ID, this_req in zip(secret, require):
+            req += this_req
+            if got_stars >= req:
+                unlocked.append(ID)
         # generate level thumbnails
-        ids = set(conf.EXISTS + conf.UNLOCKED)
+        ids = set(conf.EXISTS + unlocked)
         self.num_levels = n = len(ids)
         self.cols = cols = min(i for i in xrange(n + 1) if i * i >= n)
         self.rows = rows = n / cols + bool(n % cols)

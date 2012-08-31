@@ -345,20 +345,6 @@ class Conf (object):
     COMPLETED_LEVELS = []
     COMPLETED = False
     STARS = []
-    # generate unlocked list
-    n_stars = sum(len(lvl.get('stars', [])) for lvl in LEVELS)
-    got_stars = 0
-    for ID, i in STARS:
-        if len(LEVELS) > ID and len(LEVELS[ID].get('stars')) > i:
-            got_stars += 1
-    secret = [i for i in xrange(len(LEVELS)) if i not in EXISTS]
-    require = split(n_stars, len(secret))
-    UNLOCKED = []
-    req = 0
-    for ID, this_req in zip(secret, require):
-        req += this_req
-        if got_stars >= req:
-            UNLOCKED.append(ID)
 
     # graphics
     # level select
