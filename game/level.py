@@ -133,6 +133,8 @@ class Level (object):
         # stars
         self.stars = [Star(self, p, [ID, i] in conf.STARS)
                       for i, p in enumerate(data.get('stars', []))]
+        if not all(s.got for s in self.stars):
+            self.game.star_channel.unpause()
         # rects
         self.all_rects = [Rect(r) for r in data.get('rects', [])]
         self.all_vrects = [Rect(r) for r in data.get('vrects', [])]
@@ -275,6 +277,7 @@ class Level (object):
         i = self.ID
         if not conf.COMPLETED and i + 1 in conf.EXISTS:
             # there's a next level
+            self.game.star_channel.pause()
             if save:
                 conf.CURRENT_LEVEL = i + 1
             if progress:
@@ -450,6 +453,9 @@ class Level (object):
         # check if at stars
         for i, s in enumerate(self.stars):
             if not s.got and w.clip(s.rect) and self.get_clip(p, s.rect):
+                #self.game.play_snd('collectstar')
+                if all(s.got for s in self.stars):
+                    self.game.star_channel.pause()
                 s.got = True
                 conf.STARS.append([self.ID, i])
                 conf.dump()

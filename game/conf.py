@@ -86,13 +86,14 @@ class Conf (object):
     MUSIC_VOLUME = dd(1, paused = .3)
     SOUND_VOLUME = 1
     EVENT_ENDMUSIC = pg.USEREVENT
-    SOUNDS = {'hit': 10, 'die': 4}
-    SOUND_VOLUMES = {'hit': .04, 'die': 1, 'move': .4}
+    SOUNDS = {'hit': 10, 'die': 4, 'collectstar': 1}
+    SOUND_VOLUMES = {'hit': .04, 'die': 1, 'move': .4, 'star': 1500}
     HIT_VOL_THRESHOLD = 2 # before scaling
     VOL_MUL = .6
     VOL_CHANGE_AMOUNT = .1
     VOL_REPEAT_DELAY = ir(FPS[None] * .5)
     VOL_REPEAT_RATE = ir(FPS[None] * .2)
+    STAR_SND_CUTOFF = 1000
 
     # gameplay (sizes must be ints)
     PLAYER_SIZE = (15, 30)

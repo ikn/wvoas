@@ -113,6 +113,12 @@ music: filenames for known music.
         c.play(snd, -1)
         c.pause()
         c.set_volume(conf.VOL_MUL * conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('move', 1))
+        snd = pg.mixer.Sound(conf.SOUND_DIR + 'star.ogg')
+        self.star_channel = c = pg.mixer.find_channel()
+        assert c is not None
+        c.set_volume(0)
+        c.play(snd, -1)
+        c.pause()
         # start first backend
         self.backends = []
         self._last_overlay = False
