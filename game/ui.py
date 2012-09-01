@@ -3,41 +3,7 @@ from ext import evthandler as eh
 
 from conf import conf
 import level
-from util import ir
-
-def split (size, intervals):
-    """Split a region into integer-sized intervals.
-
-split(size, intervals) -> size_list
-
-size: the size of the region to split.
-intervals: the number of intervals to use.
-
-size_list: a list of sizes for each interval in turn.
-
-"""
-    intervals = max(intervals, 0)
-    if intervals == 0:
-        return []
-    if intervals == 1:
-        return [size]
-    avg = float(size) / intervals
-    base = int(avg)
-    diff = avg - base
-    sizes = []
-    current_diff = 0
-    for i in xrange(intervals):
-        # add up excess bits
-        current_diff += diff
-        # when we have 1, add it on
-        if current_diff >= 1:
-            sizes.append(base + 1)
-            current_diff -= 1
-        else:
-            sizes.append(base)
-    # adjust first interval (probably only by 1, if any)
-    sizes[0] += size - sum(sizes)
-    return sizes
+from util import ir, split
 
 def draw_rect (surface, colour, rect, width = 1):
     """Draw a rect border to a surface.

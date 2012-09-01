@@ -25,6 +25,8 @@ The aim is to reach the flag in each level.  Falling off the bottom of the
 screen or squashing the slime results in dying.  Blue squares are checkpoints;
 the last one you touched turns green.
 
+Tip: don't bother with the collectibles; they're just for the masochists.
+
     CONTROLS
 
 arrow keys, WASD: move, jump.
