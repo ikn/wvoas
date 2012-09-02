@@ -63,8 +63,10 @@ class Level (object):
         self.load_graphics()
         if event_handler is not None:
             self.move_channel = game.move_channel
+            self.star_channel = game.star_channel
         else:
             self.move_channel = None
+            self.star_channel = None
         # load first level
         self.ID = None
         self.init(ID, cp)
@@ -133,8 +135,8 @@ class Level (object):
         # stars
         self.stars = [Star(self, p, [ID, i] in conf.STARS)
                       for i, p in enumerate(data.get('stars', []))]
-        if not all(s.got for s in self.stars):
-            self.game.star_channel.unpause()
+        if self.star_channel is not None and not all(s.got for s in self.stars):
+            self.star_channel.unpause()
         # rects
         self.all_rects = [Rect(r) for r in data.get('rects', [])]
         self.all_vrects = [Rect(r) for r in data.get('vrects', [])]
@@ -146,10 +148,19 @@ class Level (object):
            not (evt.type == pg.KEYDOWN and evt.key in conf.KEYS_BACK) and \
            not self.winning:
             self.init()
+        elif conf.DEBUG and evt.type == pg.MOUSEBUTTONDOWN:
+            r = self.player.rect
+            c = self.window.center
+            print 'moving to', c
+            for i in (0, 1):
+                r[i] = c[i] - (r[i + 2] / 2)
+            self.player.old_rect = r
 
     def pause (self, *args):
         if self.move_channel is not None:
             self.move_channel.pause()
+        if self.star_channel is not None:
+            self.star_channel.pause()
         self.game.start_backend(ui.Paused, self)
         self.paused = True
 
@@ -274,10 +285,14 @@ class Level (object):
         self.game.play_snd('die')
 
     def next_level (self, save = True, progress = True):
+        if progress:
+            if self.move_channel is not None:
+                self.move_channel.pause()
+            if self.star_channel is not None:
+                self.star_channel.pause()
         i = self.ID
         if not conf.COMPLETED and i + 1 in conf.EXISTS:
             # there's a next level
-            self.game.star_channel.pause()
             if save:
                 conf.CURRENT_LEVEL = i + 1
             if progress:
@@ -291,8 +306,6 @@ class Level (object):
     def win (self):
         if self.winning:
             return
-        if self.move_channel is not None:
-            self.move_channel.pause()
         self.winning = True
         self.next_level(progress = False)
         if self.ID not in conf.COMPLETED_LEVELS:
@@ -454,8 +467,8 @@ class Level (object):
         for i, s in enumerate(self.stars):
             if not s.got and w.clip(s.rect) and self.get_clip(p, s.rect):
                 #self.game.play_snd('collectstar')
-                if all(s.got for s in self.stars):
-                    self.game.star_channel.pause()
+                if self.star_channel is not None and all(s.got for s in self.stars):
+                    self.star_channel.pause()
                 s.got = True
                 conf.STARS.append([self.ID, i])
                 conf.dump()

@@ -744,11 +744,13 @@ if __name__ == '__main__':
                   type = 'int')
     op.add_option('-s', '--sort-stats', action = 'store', dest = 'sort_stats',
                   type = 'string')
+    op.add_option('-d', '--debug', action = 'store_true', dest = 'debug')
     op.set_defaults(cp = -1, ls = False, time = conf.PROFILE_TIME,
                     fn = conf.PROFILE_STATS_FILE,
                     num_stats = conf.PROFILE_NUM_STATS,
-                    sort_stats = conf.PROFILE_STATS_SORT)
+                    sort_stats = conf.PROFILE_STATS_SORT, debug = False)
     options = op.parse_args()[0]
+    conf.DEBUG = options.debug
     level = options.level
     if level is not None:
         cls = Level

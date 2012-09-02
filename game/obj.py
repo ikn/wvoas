@@ -197,19 +197,20 @@ class Player (object):
             y0 -= (hb - h) * y0 / (y0 + y1)
         self.rect_img = pg.Rect(x + ir(x0), y + ir(y0), ir(wb), ir(hb))
         # star sound
-        x0, y0 = self.rect_img.center
-        vs = []
-        for s in self.level.stars:
-            if not s.got:
-                x1, y1 = s.rect.center
-                v = (abs(x1 - x0) + abs(y1 - y0)) ** 1.5
-                vs.append(1. / max(conf.STAR_SND_CUTOFF, v))
-        c = self.level.game.star_channel
-        if vs:
-            v = conf.VOL_MUL * conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('star', 1) * max(0, *vs)
-            c.set_volume(min(v, 1))
-        else:
-            c.pause()
+        c = self.level.star_channel
+        if c is not None:
+            x0, y0 = self.rect_img.center
+            vs = []
+            for s in self.level.stars:
+                if not s.got:
+                    x1, y1 = s.rect.center
+                    v = (abs(x1 - x0) + abs(y1 - y0)) ** 1.5
+                    vs.append(1. / max(conf.STAR_SND_CUTOFF, v))
+            if vs:
+                v = conf.VOL_MUL * conf.SOUND_VOLUME * conf.SOUND_VOLUMES.get('star', 1) * max(0, *vs)
+                c.set_volume(min(v, 1))
+            else:
+                c.pause()
 
     def update_vel (self):
         o, r, v = self.old_rect, self.rect, self.vel

@@ -71,6 +71,8 @@ class LevelSelect (object):
             req += this_req
             if got_stars >= req:
                 unlocked.append(ID)
+        if conf.DEBUG:
+            print '{0}/{1} stars; need {2}'.format(got_stars, n_stars, require)
         # generate level thumbnails
         ids = set(conf.EXISTS + unlocked)
         self.num_levels = n = len(ids)
