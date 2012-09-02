@@ -498,7 +498,7 @@ def translate_dd (d):
         # should be (default, dict)
         return dd(*d)
 conf = dict((k, v) for k, v in Conf.__dict__.iteritems()
-            if not k.startswith('__'))
+            if k.isupper() and not k.startswith('__'))
 types = {
     defaultdict: translate_dd
 }
